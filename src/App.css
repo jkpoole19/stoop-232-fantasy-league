@@ -1,0 +1,36 @@
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+.sub {
+  color: #666;
+}
+.msg {
+  padding: 40px;
+  text-align: center;
+}
+.scroll {
+  overflow-x: auto;
+  margin-top: 16px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th,
+td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  white-space: nowrap;
+}
+th {
+  background: #f3f3f3;
+  position: sticky;
+  top: 0;
+}
+.win {
+  font-weight: bold;
+  color: #167a2f;
+}
