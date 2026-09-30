@@ -75,6 +75,16 @@ export default function App() {
       ? matchups
       : matchups.filter((r) => r["Season"] === seasonFilter);
 
+  // Get all unique player names for the player selector
+  const allPlayers = Array.from(
+    new Set(
+      matchups
+        .map((r) => r["Manager 1"])
+        .concat(matchups.map((r) => r["Manager 2"]))
+        .filter(Boolean)
+    )
+  ).sort((a, b) => a.localeCompare(b));
+
   return (
     <div>
       <nav className="navbar">
@@ -185,6 +195,8 @@ export default function App() {
           playerName={selectedPlayer || "Player Name"}
           matchups={matchups}
           currentSeason={null}
+          allPlayers={allPlayers}
+          onPlayerChange={setSelectedPlayer}
         />
       )}
     </div>
