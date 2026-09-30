@@ -58,8 +58,16 @@ export default function Standings({ matchups, managers }) {
 
   return (
     <div className="page">
-      <h1>All-Time Standings</h1>
-      <p className="sub">{data.length} managers</p>
+      <div className="hero-header">
+        <div className="hero-backdrop"></div>
+        <div className="hero-content">
+          <h1 className="hero-title">🏆 All-Time Standings</h1>
+          <p className="hero-stat">
+            <span className="stat-badge">{data.length} Managers</span>
+            <span className="stat-badge">All-Time Record</span>
+          </p>
+        </div>
+      </div>
 
       <div className="scroll">
         <table>
@@ -92,12 +100,15 @@ export default function Standings({ matchups, managers }) {
             </tr>
           </thead>
           <tbody>
-            {sorted.map((manager) => (
-              <tr key={manager.name}>
-                <td>{manager.name}</td>
-                <td>{manager.wins}</td>
-                <td>{manager.losses}</td>
-                <td>{manager.ties}</td>
+            {sorted.map((manager, idx) => (
+              <tr key={manager.name} className={idx === 0 ? "champion" : ""}>
+                <td className="manager-cell">
+                  {idx === 0 && <span className="champion-badge">👑</span>}
+                  {manager.name}
+                </td>
+                <td className="wins-cell">{manager.wins}</td>
+                <td className="losses-cell">{manager.losses}</td>
+                <td className="ties-cell">{manager.ties}</td>
               </tr>
             ))}
           </tbody>
