@@ -65,36 +65,45 @@ export default function App() {
           className={`nav-button ${currentPage === "matchups" ? "active" : ""}`}
           onClick={() => setCurrentPage("matchups")}
         >
-          League Matchups
+          📊 League Matchups
         </button>
         <button
           className={`nav-button ${currentPage === "standings" ? "active" : ""}`}
           onClick={() => setCurrentPage("standings")}
         >
-          All-Time Standings
+          🏆 All-Time Standings
         </button>
       </nav>
 
       {currentPage === "matchups" ? (
         <div className="page">
-          <h1>League Matchups</h1>
-          <p className="sub">
-            {matchups.length} games · {managers.length} manager rows ·{" "}
-            {seasons.length} season rows
-          </p>
+          <div className="hero-header">
+            <div className="hero-backdrop"></div>
+            <div className="hero-content">
+              <h1 className="hero-title">⚡ League Matchups</h1>
+              <p className="hero-stat">
+                <span className="stat-badge">{matchups.length} Games</span>
+                <span className="stat-badge">{managers.length} Managers</span>
+                <span className="stat-badge">{seasons.length} Seasons</span>
+              </p>
+            </div>
+          </div>
 
-          <label>
-            Season:{" "}
-            <select
-              value={seasonFilter}
-              onChange={(e) => setSeasonFilter(e.target.value)}
-            >
-              <option>All</option>
-              {seasonList.map((s) => (
-                <option key={s}>{s}</option>
-              ))}
-            </select>
-          </label>
+          <div className="filter-card glass">
+            <label htmlFor="season-select">
+              <span className="filter-label">Season</span>
+              <select
+                id="season-select"
+                value={seasonFilter}
+                onChange={(e) => setSeasonFilter(e.target.value)}
+              >
+                <option>All</option>
+                {seasonList.map((s) => (
+                  <option key={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+          </div>
 
           <div className="scroll">
             <table>
@@ -115,13 +124,23 @@ export default function App() {
                   const s2 = parseFloat(r["Score 2"]);
                   return (
                     <tr key={i}>
-                      <td>{r["Season"]}</td>
-                      <td>{r["Week"]}</td>
+                      <td>
+                        <span className="pill">{r["Season"]}</span>
+                      </td>
+                      <td>
+                        <span className="pill week">W{r["Week"]}</span>
+                      </td>
                       <td className={s1 > s2 ? "win" : ""}>{r["Manager 1"]}</td>
                       <td className={s2 > s1 ? "win" : ""}>{r["Manager 2"]}</td>
-                      <td>{r["Score 1"]}</td>
-                      <td>{r["Score 2"]}</td>
-                      <td>{r["Game Type"]}</td>
+                      <td className={s1 > s2 ? "score-winner" : ""}>
+                        {r["Score 1"]}
+                      </td>
+                      <td className={s2 > s1 ? "score-winner" : ""}>
+                        {r["Score 2"]}
+                      </td>
+                      <td>
+                        <span className="game-type-badge">{r["Game Type"]}</span>
+                      </td>
                     </tr>
                   );
                 })}
