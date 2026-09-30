@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import Papa from "papaparse";
 import { SHEET_URLS } from "./config";
 import Standings from "./Standings";
+import Player from "./Player";
 import "./App.css";
 
 function loadCsv(url) {
@@ -25,6 +26,7 @@ export default function App() {
   const [status, setStatus] = useState("loading");
   const [seasonFilter, setSeasonFilter] = useState("All");
   const [currentPage, setCurrentPage] = useState("matchups");
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   useEffect(() => {
     Promise.all(SHEET_URLS.map(loadCsv))
@@ -42,6 +44,21 @@ export default function App() {
         setStatus("error");
       });
   }, []);
+
+  // Set default selected player to first manager alphabetically when data is ready
+  useEffect(() => {
+    if (status !== "ready") return;
+    if (selectedPlayer) return;
+    const names = Array.from(
+      new Set(
+        matchups
+          .map((r) => r["Manager 1"])
+          .concat(matchups.map((r) => r["Manager 2"]))
+          .filter(Boolean)
+      )
+    ).sort((a, b) => a.localeCompare(b));
+    if (names.length) setSelectedPlayer(names[0]);
+  }, [status, matchups, selectedPlayer]);
 
   if (status === "loading") return <p className="msg">Loading...</p>;
   if (status === "error")
@@ -72,6 +89,12 @@ export default function App() {
           onClick={() => setCurrentPage("standings")}
         >
           🏆 All-Time Standings
+        </button>
+        <button
+          className={`nav-button ${currentPage === "player" ? "active" : ""}`}
+          onClick={() => setCurrentPage("player")}
+        >
+          🔎 Player
         </button>
       </nav>
 
@@ -148,8 +171,21 @@ export default function App() {
             </table>
           </div>
         </div>
+      ) : currentPage === "standings" ? (
+        <Standings
+          matchups={matchups}
+          managers={managers}
+          onSelectPlayer={(name) => {
+            setSelectedPlayer(name);
+            setCurrentPage("player");
+          }}
+        />
       ) : (
-        <Standings matchups={matchups} managers={managers} />
+        <Player
+          playerName={selectedPlayer || "Player Name"}
+          matchups={matchups}
+          currentSeason={null}
+        />
       )}
     </div>
   );
