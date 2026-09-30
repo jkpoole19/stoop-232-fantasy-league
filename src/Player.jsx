@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import "./Player.css";
 
 // Player component
@@ -6,15 +6,31 @@ import "./Player.css";
 // - playerName (string) - required
 // - matchups (array of rows) - each row should at least have: Season, Week, Manager 1, Manager 2, Score 1, Score 2, Game Type
 // - currentSeason (string) - optional, used to gray out current incomplete season
+// - allPlayers (array of strings) - optional, list of all player names for selector
+// - onPlayerChange (function) - optional, callback when player is changed
 
-export default function Player({ playerName = "Player Name", matchups = [], currentSeason = null, active = true }) {
+export default function Player({ playerName = "Player Name", matchups = [], currentSeason = null, active = true, allPlayers = [], onPlayerChange = null }) {
+  const [selectedPlayer, setSelectedPlayer] = useState(playerName);
+
+  // Handle player selection change
+  const handlePlayerChange = (e) => {
+    const newPlayer = e.target.value;
+    setSelectedPlayer(newPlayer);
+    if (onPlayerChange) {
+      onPlayerChange(newPlayer);
+    }
+  };
+
+  // Use selectedPlayer if updated, otherwise use prop
+  const displayPlayer = selectedPlayer || playerName;
+
   // filter matchups involving this player
   const games = matchups.filter(
-    (r) => r["Manager 1"] === playerName || r["Manager 2"] === playerName
+    (r) => r["Manager 1"] === displayPlayer || r["Manager 2"] === displayPlayer
   );
 
   const parsedGames = games.map((r) => {
-    const isHome = r["Manager 1"] === playerName;
+    const isHome = r["Manager 1"] === displayPlayer;
     const playerScore = parseFloat(isHome ? r["Score 1"] : r["Score 2"]) || 0;
     const oppScore = parseFloat(isHome ? r["Score 2"] : r["Score 1"]) || 0;
     const opponent = isHome ? r["Manager 2"] : r["Manager 1"];
@@ -115,14 +131,20 @@ export default function Player({ playerName = "Player Name", matchups = [], curr
     <div className="player-page page">
       <div className="player-hero">
         <div className="player-hero-left">
-          <div className={`active-dot ${active ? "active" : "inactive"}`} title={active ? "Active" : "Inactive"}></div>
           <div className="player-avatar" aria-hidden>
             {/* Placeholder circle for player image */}
             <div className="avatar-circle"></div>
           </div>
         </div>
         <div className="player-hero-main">
-          <h1 className="player-name">{playerName}</h1>
+          <div className="player-header-top">
+            <div>
+              <h1 className="player-name">{displayPlayer}</h1>
+            </div>
+            <div className={`status-pill ${active ? "active" : "inactive"}`}>
+              {active ? "ACTIVE" : "INACTIVE"}
+            </div>
+          </div>
           <p className="player-meta">
             <strong>{wins}-{losses}{ties ? `-${ties}` : ""}</strong>
             <span className="meta-sep">•</span>
@@ -134,6 +156,25 @@ export default function Player({ playerName = "Player Name", matchups = [], curr
           </p>
         </div>
       </div>
+
+      {allPlayers && allPlayers.length > 0 && (
+        <div className="player-selector-card glass">
+          <label htmlFor="player-select">
+            <span className="player-select-label">Select Player</span>
+            <select
+              id="player-select"
+              value={selectedPlayer}
+              onChange={handlePlayerChange}
+            >
+              {allPlayers.map((player) => (
+                <option key={player} value={player}>
+                  {player}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
 
       <div className="player-content">
         <section className="card">
