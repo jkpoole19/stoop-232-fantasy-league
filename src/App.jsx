@@ -152,6 +152,70 @@ function getSeasonRows(matchups, seasons) {
   });
 }
 
+function getManagerSeasonWinRates(matchups, managerName) {
+  const seasons = new Map();
+
+  matchups.forEach((matchup) => {
+    const manager1 = matchup["Manager 1"]?.trim();
+    const manager2 = matchup["Manager 2"]?.trim();
+    if (manager1 !== managerName && manager2 !== managerName) return;
+
+    const score1 = numberValue(matchup["Score 1"]);
+    const score2 = numberValue(matchup["Score 2"]);
+    if (!matchup.Season || score1 == null || score2 == null) return;
+
+    const season = seasons.get(matchup.Season) || { season: matchup.Season, wins: 0, losses: 0, ties: 0 };
+    const managerScore = manager1 === managerName ? score1 : score2;
+    const opponentScore = manager1 === managerName ? score2 : score1;
+    if (managerScore > opponentScore) season.wins += 1;
+    else if (managerScore < opponentScore) season.losses += 1;
+    else season.ties += 1;
+    seasons.set(matchup.Season, season);
+  });
+
+  return [...seasons.values()]
+    .sort((a, b) => seasonOrder(b.season, a.season))
+    .map((season) => {
+      const games = season.wins + season.losses + season.ties;
+      return { ...season, winPercentage: games ? (season.wins / games) * 100 : 0 };
+    });
+}
+
+function getManagerOpponentRecords(matchups, managerName, managerStats) {
+  const opponents = new Map();
+
+  matchups.forEach((matchup) => {
+    const manager1 = matchup["Manager 1"]?.trim();
+    const manager2 = matchup["Manager 2"]?.trim();
+    if (manager1 !== managerName && manager2 !== managerName) return;
+
+    const opponentName = manager1 === managerName ? manager2 : manager1;
+    const score1 = numberValue(matchup["Score 1"]);
+    const score2 = numberValue(matchup["Score 2"]);
+    if (!opponentName || opponentName === managerName || score1 == null || score2 == null) return;
+
+    const opponent = opponents.get(opponentName) || { name: opponentName, wins: 0, losses: 0, ties: 0 };
+    const managerScore = manager1 === managerName ? score1 : score2;
+    const opponentScore = manager1 === managerName ? score2 : score1;
+    if (managerScore > opponentScore) opponent.wins += 1;
+    else if (managerScore < opponentScore) opponent.losses += 1;
+    else opponent.ties += 1;
+    opponents.set(opponentName, opponent);
+  });
+
+  return [...opponents.values()]
+    .map((opponent) => {
+      const games = opponent.wins + opponent.losses + opponent.ties;
+      const manager = managerStats.find((item) => item.name === opponent.name);
+      return {
+        ...opponent,
+        displayName: manager?.displayName || opponent.name,
+        winPercentage: games ? (opponent.wins / games) * 100 : 0,
+      };
+    })
+    .sort((a, b) => b.winPercentage - a.winPercentage || b.wins - a.wins || a.displayName.localeCompare(b.displayName));
+}
+
 function getRecords(matchups, managerStats, seasonRows) {
   const scoredGames = matchups.flatMap((matchup) => {
     const score1 = numberValue(matchup["Score 1"]);
@@ -298,32 +362,115 @@ function Dashboard({ matchups, managerStats, seasonRows, onNavigate }) {
   );
 }
 
-function PlayerPage({ managerStats }) {
+function ManagerDetails({ manager, seasonWinRates, opponentRecords }) {
+  return (
+    <div className="manager-details">
+      <section className="panel manager-detail-panel">
+        <div className="panel-heading">
+          <div><p className="eyebrow">Season performance</p><h2>Win percentage by year</h2></div>
+          <span className="detail-count">{seasonWinRates.length} seasons</span>
+        </div>
+        {seasonWinRates.length ? (
+          <div className="season-chart-scroll">
+            <div className="season-chart" role="img" aria-label={`Win percentage by year for ${manager.displayName}`}>
+              {seasonWinRates.map((season) => (
+                <div className="season-chart-column" key={season.season} title={`${season.season}: ${season.winPercentage.toFixed(1)}% (${season.wins}-${season.losses}-${season.ties})`}>
+                  <span className="season-chart-value">{season.winPercentage.toFixed(0)}%</span>
+                  <div className="season-chart-track"><span className="season-chart-bar" style={{ height: `${Math.max(season.winPercentage, 2)}%` }} /></div>
+                  <span className="season-chart-year">{season.season}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : <p className="empty-state">No scored matchups are available for this manager.</p>}
+      </section>
+
+      <section className="panel manager-detail-panel">
+        <div className="panel-heading">
+          <div><p className="eyebrow">Head-to-head</p><h2>Record vs each opponent</h2></div>
+          <span className="detail-count">{opponentRecords.length} opponents</span>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead><tr><th>Opponent</th><th>Record (W-L-T)</th><th>Win %</th></tr></thead>
+            <tbody>
+              {opponentRecords.map((opponent) => (
+                <tr key={opponent.name}>
+                  <td><strong>{opponent.displayName}</strong></td>
+                  <td>{opponent.wins}-{opponent.losses}-{opponent.ties}</td>
+                  <td>{opponent.winPercentage.toFixed(1)}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!opponentRecords.length && <p className="empty-state">No opponent records are available.</p>}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function PlayerPage({ managerStats, seasonRows, matchups }) {
   const [query, setQuery] = useState("");
+  const [selectedManagerName, setSelectedManagerName] = useState(null);
   const filtered = managerStats.filter((manager) => `${manager.displayName} ${manager.name}`.toLowerCase().includes(query.toLowerCase()));
+  const selectedManager = managerStats.find((manager) => manager.name === selectedManagerName);
+  const visibleManagers = selectedManager ? [selectedManager] : filtered;
+  const championshipCounts = new Map(managerStats.map((manager) => [manager.name, 0]));
+  seasonRows.forEach((season) => {
+    if (!season.champion || season.champion === "—" || season.champion === "TBD") return;
+    const champion = managerStats.find((manager) =>
+      [manager.name, manager.displayName].some((name) => name.toLowerCase() === season.champion.toLowerCase()),
+    );
+    if (champion) championshipCounts.set(champion.name, championshipCounts.get(champion.name) + 1);
+  });
 
   return (
     <div className="page-content">
       <PageHeading eyebrow="League directory" title="Player standings" description="Manager profiles ranked by all-time wins." />
       <section className="panel data-panel">
         <div className="table-toolbar">
-          <span>{filtered.length} managers</span>
-          <label className="search-field"><Search size={16} aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a manager" aria-label="Find a manager" /></label>
+          <span>{selectedManager ? "1 manager selected" : `${filtered.length} managers`}</span>
+          {selectedManager ? (
+            <button className="text-action" onClick={() => setSelectedManagerName(null)}><ChevronLeft size={16} aria-hidden="true" /> All managers</button>
+          ) : (
+            <label className="search-field"><Search size={16} aria-hidden="true" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Find a manager" aria-label="Find a manager" /></label>
+          )}
         </div>
         <div className="table-scroll">
           <table>
-            <thead><tr><th>Rank</th><th>Manager</th><th>Record</th><th>Win %</th><th>Points for</th><th>Points against</th><th>Status</th></tr></thead>
+            <thead><tr><th>Rank</th><th>Manager</th><th>Record</th><th>Win %</th><th>Points for</th><th>Points against</th><th>Championship Count</th></tr></thead>
             <tbody>
-              {filtered.map((manager) => {
+              {visibleManagers.map((manager) => {
                 const decidedGames = manager.wins + manager.losses + manager.ties;
                 const winRate = decidedGames ? (manager.wins / decidedGames) * 100 : 0;
                 return (
-                  <tr key={manager.name}>
+                  <tr
+                    className={`manager-row ${selectedManagerName === manager.name ? "manager-row-selected" : ""}`}
+                    key={manager.name}
+                    tabIndex={0}
+                    aria-selected={selectedManagerName === manager.name}
+                    onClick={() => setSelectedManagerName(manager.name)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedManagerName(manager.name);
+                      }
+                    }}
+                  >
                     <td className="rank-cell">{String(managerStats.indexOf(manager) + 1).padStart(2, "0")}</td>
-                    <td><strong>{manager.displayName}</strong><span className="cell-secondary">{manager.name}</span></td>
+                    <td>
+                      <div className="player-identity">
+                        <span className="manager-photo-placeholder" aria-hidden="true"><UserRound size={15} strokeWidth={1.7} /></span>
+                        <div className="player-details">
+                          <strong>{manager.displayName}</strong>
+                          <span className={`status-pill ${manager.active ? "active" : "inactive"}`}>{manager.active ? "Active" : "Inactive"}</span>
+                        </div>
+                      </div>
+                    </td>
                     <td>{manager.wins}-{manager.losses}{manager.ties ? `-${manager.ties}` : ""}</td>
-                    <td>{winRate.toFixed(1)}%</td><td>{formatScore(manager.pointsFor)}</td><td>{formatScore(manager.pointsAgainst)}</td>
-                    <td><span className={`status-pill ${manager.active ? "active" : "inactive"}`}>{manager.active ? "Active" : "Inactive"}</span></td>
+                    <td>{winRate.toFixed(1)}%</td><td>{Math.round(manager.pointsFor).toLocaleString()}</td><td>{Math.round(manager.pointsAgainst).toLocaleString()}</td>
+                    <td>{championshipCounts.get(manager.name) || 0}</td>
                   </tr>
                 );
               })}
@@ -332,6 +479,13 @@ function PlayerPage({ managerStats }) {
           {!filtered.length && <p className="empty-state">No managers match that search.</p>}
         </div>
       </section>
+      {selectedManager && (
+        <ManagerDetails
+          manager={selectedManager}
+          seasonWinRates={getManagerSeasonWinRates(matchups, selectedManager.name)}
+          opponentRecords={getManagerOpponentRecords(matchups, selectedManager.name, managerStats)}
+        />
+      )}
     </div>
   );
 }
@@ -516,7 +670,7 @@ export default function App() {
           <div className="topbar-mark"><PageIcon size={16} aria-hidden="true" /><span>STOOP 232</span></div>
         </div>
         {currentPage === "dashboard" && <Dashboard matchups={matchups} managerStats={managerStats} seasonRows={seasonRows} onNavigate={navigate} />}
-        {currentPage === "player" && <PlayerPage managerStats={managerStats} />}
+        {currentPage === "player" && <PlayerPage managerStats={managerStats} seasonRows={seasonRows} matchups={matchups} />}
         {currentPage === "seasons" && <SeasonsPage seasonRows={seasonRows} />}
         {currentPage === "records" && <RecordsPage records={records} />}
         {currentPage === "matchups" && <MatchupsPage matchups={matchups} seasonRows={seasonRows} />}

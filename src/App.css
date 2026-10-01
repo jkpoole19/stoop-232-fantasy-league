@@ -139,10 +139,27 @@ tbody tr:hover td { background: #fafaf6; }
 td strong { color: #303b35; font-weight: 700; }
 .rank-cell, .season-year { color: #a55237; font-family: Georgia, "Times New Roman", serif; font-size: 14px; }
 .cell-secondary { display: block; margin-top: 3px; color: #929a93; font-size: 9px; }
+.player-identity { display: flex; align-items: center; gap: 10px; }
+.manager-photo-placeholder { display: grid; width: 32px; height: 32px; flex: 0 0 32px; place-items: center; border: 1px solid #dedfd7; border-radius: 50%; color: #8b948d; background: #f2f2ed; }
+.player-details { display: grid; justify-items: start; gap: 6px; }
+.player-details .status-pill { min-height: 19px; }
+.manager-row { cursor: pointer; }
+.manager-row:focus-visible { outline: 2px solid #a94f36; outline-offset: -2px; }
+tbody tr.manager-row-selected td { background: #f5eee7; }
 .status-pill, .game-type { display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px; border-radius: 3px; font-size: 9px; font-weight: 700; }
 .status-pill.active { color: #467653; background: #eaf2e8; }
 .status-pill.inactive { color: #767d77; background: #efefeb; }
 .game-type { color: #617b67; background: #eef2e9; }
+.manager-details { display: grid; gap: 14px; margin-top: 16px; }
+.manager-detail-panel { padding: 20px; }
+.detail-count { color: #858e87; font-size: 10px; }
+.season-chart-scroll { overflow-x: auto; margin-top: 18px; }
+.season-chart { display: flex; min-width: max-content; align-items: flex-end; gap: 13px; padding: 0 3px 2px; }
+.season-chart-column { display: grid; width: 42px; flex: 0 0 42px; justify-items: center; gap: 7px; }
+.season-chart-value { color: #728078; font-size: 9px; font-variant-numeric: tabular-nums; }
+.season-chart-track { display: flex; width: 28px; height: 145px; align-items: flex-end; border-bottom: 1px solid #dfe2da; background: repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), #e9ebe5 calc(25% - 1px) 25%); }
+.season-chart-bar { display: block; width: 100%; border-radius: 3px 3px 0 0; background: #6d9977; }
+.season-chart-year { color: #77817a; font-size: 9px; }
 
 .season-summary-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; border: 1px solid #e4e3dc; border-radius: 5px; background: #e9ece5; }
 .season-summary-strip > div { display: grid; gap: 7px; padding: 16px 19px; border-right: 1px solid #d9ded6; }
