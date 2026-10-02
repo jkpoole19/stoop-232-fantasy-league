@@ -642,9 +642,9 @@ function ManagerDetails({ manager, seasonWinRates, opponentRecords }) {
 function PlayerPage({ managerStats, seasonRows, matchups }) {
   const [query, setQuery] = useState("");
   const [selectedManagerName, setSelectedManagerName] = useState(null);
+  const [sortState, setSortState] = useState({ key: "rank", direction: "asc" });
   const filtered = managerStats.filter((manager) => `${manager.displayName} ${manager.name}`.toLowerCase().includes(query.toLowerCase()));
   const selectedManager = managerStats.find((manager) => manager.name === selectedManagerName);
-  const visibleManagers = selectedManager ? [selectedManager] : filtered;
   const championshipCounts = new Map(managerStats.map((manager) => [manager.name, 0]));
   seasonRows.forEach((season) => {
     if (!season.champion || season.champion === "—" || season.champion === "TBD") return;
@@ -653,6 +653,37 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
     );
     if (champion) championshipCounts.set(champion.name, championshipCounts.get(champion.name) + 1);
   });
+  const columns = [
+    { key: "rank", label: "Rank" },
+    { key: "manager", label: "Manager" },
+    { key: "record", label: "Record" },
+    { key: "winPercentage", label: "Win %" },
+    { key: "pointsFor", label: "Points for" },
+    { key: "pointsAgainst", label: "Points against" },
+    { key: "championships", label: "Championship Count" },
+  ];
+  const sortedManagers = [...filtered].sort((a, b) => {
+    const direction = sortState.direction === "asc" ? 1 : -1;
+    let comparison = 0;
+    if (sortState.key === "rank") comparison = managerStats.indexOf(a) - managerStats.indexOf(b);
+    else if (sortState.key === "manager") comparison = a.displayName.localeCompare(b.displayName);
+    else if (sortState.key === "record") comparison = a.wins - b.wins || a.losses - b.losses || a.ties - b.ties;
+    else if (sortState.key === "winPercentage") {
+      const aGames = a.wins + a.losses + a.ties;
+      const bGames = b.wins + b.losses + b.ties;
+      comparison = (aGames ? a.wins / aGames : 0) - (bGames ? b.wins / bGames : 0);
+    } else if (sortState.key === "pointsFor") comparison = a.pointsFor - b.pointsFor;
+    else if (sortState.key === "pointsAgainst") comparison = a.pointsAgainst - b.pointsAgainst;
+    else comparison = (championshipCounts.get(a.name) || 0) - (championshipCounts.get(b.name) || 0);
+    return comparison * direction || a.displayName.localeCompare(b.displayName);
+  });
+  const visibleManagers = selectedManager ? [selectedManager] : sortedManagers;
+  const changeSort = (key) => {
+    setSortState((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
 
   return (
     <div className="page-content">
@@ -668,7 +699,17 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
         </div>
         <div className="table-scroll">
           <table>
-            <thead><tr><th>Rank</th><th>Manager</th><th>Record</th><th>Win %</th><th>Points for</th><th>Points against</th><th>Championship Count</th></tr></thead>
+            <thead><tr>{columns.map(({ key, label }) => {
+              const active = sortState.key === key;
+              const SortIcon = sortState.direction === "asc" ? ArrowUp : ArrowDown;
+              return (
+                <th key={key} aria-sort={active ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+                  <button className="sort-header-button" onClick={() => changeSort(key)}>
+                    {label}{active && <SortIcon size={13} aria-hidden="true" />}
+                  </button>
+                </th>
+              );
+            })}</tr></thead>
             <tbody>
               {visibleManagers.map((manager) => {
                 const decidedGames = manager.wins + manager.losses + manager.ties;
