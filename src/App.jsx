@@ -9,15 +9,18 @@ import {
   ChevronLeft,
   ChevronRight,
   CircleHelp,
+  Flame,
   LayoutDashboard,
   Search,
+  Target,
   Trophy,
+  TrendingDown,
+  TrendingUp,
   UserRound,
   Zap,
 } from "lucide-react";
 import { SHEET_URLS } from "./config";
 import "./App.css";
-
 const NAV_ITEMS = [
   { id: "dashboard", label: "League", icon: LayoutDashboard },
   { id: "player", label: "Player", icon: UserRound },
@@ -261,43 +264,155 @@ function getManagerOpponentRecords(matchups, managerName, managerStats) {
     .sort((a, b) => b.winPercentage - a.winPercentage || b.wins - a.wins || a.displayName.localeCompare(b.displayName));
 }
 
+function getStreakRecords(scoredMatchups) {
+  const managerStates = new Map();
+  const chronologicalGames = [...scoredMatchups].sort((a, b) =>
+    seasonOrder(b.season, a.season) ||
+    (numberValue(a.week) ?? 0) - (numberValue(b.week) ?? 0) ||
+    a.index - b.index,
+  );
+
+  chronologicalGames.forEach((game) => {
+    const firstWon = game.score1 > game.score2;
+    const tied = game.score1 === game.score2;
+    [
+      { name: game.manager1, result: tied ? "tie" : firstWon ? "win" : "loss" },
+      { name: game.manager2, result: tied ? "tie" : firstWon ? "loss" : "win" },
+    ].forEach(({ name, result }) => {
+      const state = managerStates.get(name) || {
+        currentResult: null,
+        currentLength: 0,
+        startSeason: null,
+        longestWin: null,
+        longestLoss: null,
+      };
+
+      if (result === "tie") {
+        state.currentResult = null;
+        state.currentLength = 0;
+        state.startSeason = null;
+      } else if (state.currentResult === result) {
+        state.currentLength += 1;
+      } else {
+        state.currentResult = result;
+        state.currentLength = 1;
+        state.startSeason = game.season;
+      }
+
+      if (result === "win" && (!state.longestWin || state.currentLength > state.longestWin.length)) {
+        state.longestWin = { manager: name, length: state.currentLength, startSeason: state.startSeason, endSeason: game.season };
+      }
+      if (result === "loss" && (!state.longestLoss || state.currentLength > state.longestLoss.length)) {
+        state.longestLoss = { manager: name, length: state.currentLength, startSeason: state.startSeason, endSeason: game.season };
+      }
+      managerStates.set(name, state);
+    });
+  });
+
+  const streaks = [...managerStates.values()];
+  return {
+    longestWinningStreak: streaks.map((state) => state.longestWin).filter(Boolean).sort((a, b) => b.length - a.length)[0] || null,
+    longestLosingStreak: streaks.map((state) => state.longestLoss).filter(Boolean).sort((a, b) => b.length - a.length)[0] || null,
+  };
+}
+
 function getRecords(matchups, managerStats, seasonRows) {
-  const scoredGames = matchups.flatMap((matchup) => {
+  const displayNames = new Map(managerStats.map((manager) => [manager.name, manager.displayName]));
+  const scoredMatchups = matchups.map((matchup, index) => {
     const score1 = numberValue(matchup["Score 1"]);
     const score2 = numberValue(matchup["Score 2"]);
-    return [
-      score1 == null ? null : { score: score1, manager: matchup["Manager 1"], season: matchup.Season, week: matchup.Week },
-      score2 == null ? null : { score: score2, manager: matchup["Manager 2"], season: matchup.Season, week: matchup.Week },
-    ].filter(Boolean);
+    if (score1 == null || score2 == null) return null;
+    const manager1 = matchup["Manager 1"]?.trim();
+    const manager2 = matchup["Manager 2"]?.trim();
+    const winner = score1 > score2 ? manager1 : score2 > score1 ? manager2 : null;
+    return {
+      index,
+      season: matchup.Season,
+      week: matchup.Week,
+      score1,
+      score2,
+      manager1,
+      manager2,
+      displayName1: displayNames.get(manager1) || manager1,
+      displayName2: displayNames.get(manager2) || manager2,
+      margin: Math.abs(score1 - score2),
+      winner,
+      winnerDisplayName: winner ? displayNames.get(winner) || winner : null,
+    };
+  }).filter(Boolean);
+  const scoreEntries = scoredMatchups.flatMap((game) => [
+    { ...game, id: `${game.index}-1`, score: game.score1, manager: game.manager1, displayName: game.displayName1 },
+    { ...game, id: `${game.index}-2`, score: game.score2, manager: game.manager2, displayName: game.displayName2 },
+  ]);
+  const highestScores = [...scoreEntries].sort((a, b) => b.score - a.score || a.index - b.index).slice(0, 5);
+  const lowestScores = [...scoreEntries].sort((a, b) => a.score - b.score || a.index - b.index).slice(0, 5);
+  const closestMatchups = [...scoredMatchups].sort((a, b) => a.margin - b.margin || a.index - b.index).slice(0, 5);
+  const highestScore = highestScores[0] || null;
+  const lowestScore = [...scoreEntries].sort((a, b) => a.score - b.score || a.index - b.index)[0] || null;
+  const widestMargin = [...scoredMatchups].sort((a, b) => b.margin - a.margin || a.index - b.index)[0] || null;
+  const smallestMarginVictory = [...scoredMatchups]
+    .filter((game) => game.margin > 0)
+    .sort((a, b) => a.margin - b.margin || a.index - b.index)[0] || null;
+  const seasonManagerStats = new Map();
+  scoredMatchups.forEach((game) => {
+    if (!game.season) return;
+    [
+      { manager: game.manager1, score: game.score1, won: game.score1 > game.score2 },
+      { manager: game.manager2, score: game.score2, won: game.score2 > game.score1 },
+    ].forEach(({ manager, score, won }) => {
+      const key = JSON.stringify([game.season, manager]);
+      const stats = seasonManagerStats.get(key) || { manager, season: game.season, games: 0, points: 0, wins: 0 };
+      stats.games += 1;
+      stats.points += score;
+      if (won) stats.wins += 1;
+      seasonManagerStats.set(key, stats);
+    });
   });
-  const highestScore = [...scoredGames].sort((a, b) => b.score - a.score)[0] || null;
-  const widestMargin = [...matchups]
-    .map((matchup) => {
-      const score1 = numberValue(matchup["Score 1"]);
-      const score2 = numberValue(matchup["Score 2"]);
-      if (score1 == null || score2 == null) return null;
-      return {
-        margin: Math.abs(score1 - score2),
-        winner: score1 >= score2 ? matchup["Manager 1"] : matchup["Manager 2"],
-        season: matchup.Season,
-        week: matchup.Week,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.margin - a.margin)[0] || null;
+  const seasonRecords = [...seasonManagerStats.values()].map((stats) => ({
+    ...stats,
+    averageScore: stats.points / stats.games,
+  }));
+  const highestSeasonAverage = [...seasonRecords].sort((a, b) => b.averageScore - a.averageScore || a.manager.localeCompare(b.manager))[0] || null;
+  const lowestSeasonAverage = [...seasonRecords].sort((a, b) => a.averageScore - b.averageScore || a.manager.localeCompare(b.manager))[0] || null;
+  const mostSeasonWins = [...seasonRecords].sort((a, b) => b.wins - a.wins || a.manager.localeCompare(b.manager))[0] || null;
+  const streakRecords = getStreakRecords(scoredMatchups);
   const titles = new Map();
   seasonRows.forEach((season) => {
-    if (season.champion && season.champion !== "—" && season.champion !== "TBD") {
-      titles.set(season.champion, (titles.get(season.champion) || 0) + 1);
-    }
+    if (!isNamedChampion(season.champion)) return;
+    const champion = managerStats.find((manager) =>
+      [manager.name, manager.displayName].some((name) => name.toLowerCase() === season.champion.toLowerCase()),
+    );
+    const name = champion?.name || season.champion;
+    const current = titles.get(name) || { name: champion?.name || season.champion, count: 0 };
+    current.count += 1;
+    titles.set(name, current);
   });
-  const mostTitles = [...titles.entries()].sort((a, b) => b[1] - a[1])[0] || null;
+  const titleLeaders = [...titles.values()];
+  const maxTitleCount = Math.max(0, ...titleLeaders.map((leader) => leader.count));
+  const mostTitles = maxTitleCount
+    ? { count: maxTitleCount, players: titleLeaders.filter((leader) => leader.count === maxTitleCount).map((leader) => leader.name) }
+    : null;
 
   const topScorer = [...managerStats].sort(
     (a, b) => b.pointsFor - a.pointsFor || b.wins - a.wins,
   )[0] || null;
 
-  return { highestScore, widestMargin, mostTitles, topManager: managerStats[0] || null, topScorer };
+  return {
+    highestScore,
+    lowestScore,
+    widestMargin,
+    smallestMarginVictory,
+    highestSeasonAverage,
+    lowestSeasonAverage,
+    mostSeasonWins,
+    highestScores,
+    lowestScores,
+    closestMatchups,
+    ...streakRecords,
+    mostTitles,
+    topManager: managerStats[0] || null,
+    topScorer,
+  };
 }
 
 function PageHeading({ eyebrow, title, description, action }) {
@@ -637,17 +752,72 @@ function RecordCard({ label, value, detail, icon: Icon }) {
   return <article className="record-card"><div className="record-icon"><Icon size={18} aria-hidden="true" /></div><p className="eyebrow">{label}</p><strong className="record-value">{value}</strong><span className="record-detail">{detail}</span></article>;
 }
 
+function TopFiveTable({ title, headers, rows, renderCells, emptyMessage }) {
+  return (
+    <section className="panel top-five-panel">
+      <div className="panel-heading"><h2>{title}</h2></div>
+      {rows.length ? (
+        <div className="table-scroll">
+          <table>
+            <thead><tr>{headers.map((header) => <th key={header}>{header}</th>)}</tr></thead>
+            <tbody>{rows.map((row) => <tr key={row.id ?? row.index}>{renderCells(row)}</tr>)}</tbody>
+          </table>
+        </div>
+      ) : <p className="empty-state">{emptyMessage}</p>}
+    </section>
+  );
+}
+
 function RecordsPage({ records }) {
+  const streakDetail = (streak) => {
+    if (!streak) return "No scored streaks yet";
+    const seasons = streak.startSeason === streak.endSeason
+      ? streak.startSeason
+      : `${streak.startSeason}–${streak.endSeason}`;
+    return `${streak.manager} · ${seasons}`;
+  };
+
   return (
     <div className="page-content">
       <PageHeading eyebrow="League history" title="Records worth keeping." description="The top marks from every matchup in the archive." />
       <section className="records-grid">
-        <RecordCard label="Most career wins" value={records.topManager?.wins ?? "—"} detail={records.topManager?.displayName || "No results yet"} icon={Trophy} />
-        <RecordCard label="Most points scored" value={records.topScorer ? formatScore(records.topScorer.pointsFor) : "—"} detail={records.topScorer?.displayName || "No results yet"} icon={Award} />
+        <RecordCard label="Most career wins" value={records.topManager?.wins ?? "—"} detail={records.topManager?.name || "No results yet"} icon={Trophy} />
+        <RecordCard label="Most points scored" value={records.topScorer ? formatScore(records.topScorer.pointsFor) : "—"} detail={records.topScorer?.name || "No results yet"} icon={Award} />
         <RecordCard label="Highest single score" value={records.highestScore ? formatScore(records.highestScore.score) : "—"} detail={records.highestScore ? `${records.highestScore.manager} · ${records.highestScore.season}` : "No results yet"} icon={Zap} />
         <RecordCard label="Widest victory" value={records.widestMargin ? formatScore(records.widestMargin.margin) : "—"} detail={records.widestMargin ? `${records.widestMargin.winner} · ${records.widestMargin.season}` : "No results yet"} icon={ArrowUpRight} />
-        <RecordCard label="Most championships" value={records.mostTitles?.[1] ?? "—"} detail={records.mostTitles?.[0] || "No titles recorded"} icon={Trophy} />
+        <RecordCard label="Most championships" value={records.mostTitles?.count ?? "—"} detail={records.mostTitles?.players.join(", ") || "No titles recorded"} icon={Trophy} />
+        <RecordCard label="Lowest single score" value={records.lowestScore ? formatScore(records.lowestScore.score) : "—"} detail={records.lowestScore ? `${records.lowestScore.manager} · ${records.lowestScore.season}` : "No results yet"} icon={ArrowDown} />
+        <RecordCard label="Smallest margin of victory" value={records.smallestMarginVictory ? formatScore(records.smallestMarginVictory.margin) : "—"} detail={records.smallestMarginVictory ? `${records.smallestMarginVictory.winner} · ${records.smallestMarginVictory.season}` : "No decisive games yet"} icon={Target} />
+        <RecordCard label="Longest winning streak" value={records.longestWinningStreak ? `${records.longestWinningStreak.length} games` : "—"} detail={streakDetail(records.longestWinningStreak)} icon={Flame} />
+        <RecordCard label="Longest losing streak" value={records.longestLosingStreak ? `${records.longestLosingStreak.length} games` : "—"} detail={streakDetail(records.longestLosingStreak)} icon={TrendingDown} />
+        <RecordCard label="Highest average score in a season" value={records.highestSeasonAverage ? formatScore(records.highestSeasonAverage.averageScore) : "—"} detail={records.highestSeasonAverage ? `${records.highestSeasonAverage.manager} · ${records.highestSeasonAverage.season}` : "No scored seasons yet"} icon={TrendingUp} />
+        <RecordCard label="Lowest average score in a season" value={records.lowestSeasonAverage ? formatScore(records.lowestSeasonAverage.averageScore) : "—"} detail={records.lowestSeasonAverage ? `${records.lowestSeasonAverage.manager} · ${records.lowestSeasonAverage.season}` : "No scored seasons yet"} icon={TrendingDown} />
+        <RecordCard label="Most wins in a season" value={records.mostSeasonWins?.wins ?? "—"} detail={records.mostSeasonWins ? `${records.mostSeasonWins.manager} · ${records.mostSeasonWins.season}` : "No scored seasons yet"} icon={Award} />
       </section>
+
+      <div className="top-five-grid">
+        <TopFiveTable
+          title="Top 5 highest scores"
+          headers={["Manager", "Score", "Season", "Week"]}
+          rows={records.highestScores}
+          renderCells={(score) => <><td><strong>{score.displayName}</strong></td><td>{formatScore(score.score)}</td><td>{score.season || "—"}</td><td>{score.week || "—"}</td></>}
+          emptyMessage="No scored matchups yet."
+        />
+        <TopFiveTable
+          title="Top 5 lowest scores"
+          headers={["Manager", "Score", "Season", "Week"]}
+          rows={records.lowestScores}
+          renderCells={(score) => <><td><strong>{score.displayName}</strong></td><td>{formatScore(score.score)}</td><td>{score.season || "—"}</td><td>{score.week || "—"}</td></>}
+          emptyMessage="No scored matchups yet."
+        />
+        <TopFiveTable
+          title="Top 5 closest matchups"
+          headers={["Matchup", "Score", "Margin", "Season"]}
+          rows={records.closestMatchups}
+          renderCells={(game) => <><td>{game.displayName1} vs {game.displayName2}</td><td>{formatScore(game.score1)}–{formatScore(game.score2)}</td><td>{formatScore(game.margin)}</td><td>{game.season || "—"}</td></>}
+          emptyMessage="No scored matchups yet."
+        />
+      </div>
       <p className="records-note">Records are calculated from the matchup and season sheets currently in the league archive.</p>
     </div>
   );

@@ -195,6 +195,12 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 .record-card .eyebrow { margin-bottom: 7px; }
 .record-value { color: #29342e; font-family: Georgia, "Times New Roman", serif; font-size: 27px; font-weight: 400; }
 .record-detail { margin-top: 5px; color: #79837c; font-size: 10px; }
+.top-five-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; margin-top: 18px; }
+.top-five-panel { min-width: 0; overflow: hidden; }
+.top-five-panel .panel-heading { min-height: 58px; padding: 14px 15px 10px; }
+.top-five-panel .panel-heading h2 { font-size: 17px; }
+.top-five-panel th, .top-five-panel td { padding: 10px 11px; }
+.top-five-panel td { font-size: 10px; }
 .records-note { margin: 14px 0 0; color: #88928a; font-size: 10px; line-height: 1.5; }
 .matchup-filters { justify-content: flex-start; flex-wrap: wrap; }
 .matchup-search { flex: 1 1 250px; }
@@ -240,6 +246,7 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
   .champion-panel { min-height: 205px; }
   .champion-season-label { margin-top: 15px; }
   .records-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .top-five-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 520px) {
@@ -266,6 +273,7 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
   .records-grid { gap: 9px; }
   .record-card { min-height: 159px; padding: 13px; }
   .record-value { font-size: 23px; }
+  .top-five-grid { grid-template-columns: 1fr; }
   .table-toolbar, .matchup-filters { align-items: stretch; flex-direction: column; }
   .search-field { width: 100%; min-width: 0; }
   .select-field { justify-content: space-between; }
