@@ -25,6 +25,7 @@
 .brand-mark { width: 38px; height: 38px; color: #202a28; background: #e8a178; border-radius: 11px 11px 4px 11px; }
 .brand-copy { display: grid; gap: 3px; }
 .brand-copy strong { font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 500; }
+.brand-copy strong span { color: #e8a178; }
 .brand-copy small, .nav-section-label, .eyebrow, .topbar-mark, .breadcrumb span { font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .brand-copy small { color: #a5b0a8; font-size: 9px; }
 .nav-section-label { padding: 0 11px 11px; color: #8e9b91; font-size: 9px; }
@@ -105,15 +106,21 @@ input:focus-visible, select:focus-visible, .brand:focus-visible {
 .recent-game-score strong { color: #28322e; font-size: 11px; white-space: nowrap; }
 .recent-game-score i { color: #9ca39d; font-style: normal; }
 .champion-panel { display: flex; min-height: 100%; flex-direction: column; align-items: flex-start; padding: 22px; border-color: #31403a; color: #e9eee8; background: #2b3833; }
-.champion-mark { width: 38px; height: 38px; margin-bottom: auto; border-radius: 50%; color: #f1bd8f; background: #3c4a42; }
-.champion-panel .eyebrow { margin-top: 27px; color: #e1a781; }
+.reigning-champion-top { display: flex; width: 100%; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.reigning-champion-top .eyebrow { margin: 2px 0 0; color: #e1a781; }
+.reigning-photo-placeholder { display: grid; width: 58px; height: 58px; flex: 0 0 58px; place-items: center; border: 1px solid #67766c; border-radius: 50%; color: #f1bd8f; background: #3c4a42; }
+.champion-season-label { margin: auto 0 7px; color: #bac5bc; font-size: 10px; }
 .champion-panel h2 { color: #fffefa; font-size: 26px; }
+.champion-final-record { display: flex; align-items: baseline; gap: 9px; margin-top: 13px; }
+.champion-final-record span { color: #bac5bc; font-size: 10px; }
+.champion-final-record strong { color: #fffefa; font-family: Georgia, "Times New Roman", serif; font-size: 20px; font-weight: 400; }
 .champion-copy { min-height: 34px; margin: 8px 0 10px; color: #bac5bc; font-size: 11px; line-height: 1.5; }
 .champion-panel .text-action { color: #efb38e; }
 .leader-list { margin-top: 13px; }
 .leader-row { display: grid; grid-template-columns: 34px minmax(120px, 1fr) auto minmax(90px, 0.8fr); align-items: center; gap: 12px; min-height: 48px; border-top: 1px solid #eeeee8; }
 .leader-rank { color: #9ba29b; font-family: Georgia, "Times New Roman", serif; font-size: 14px; }
 .leader-rank.first { color: #ad5838; }
+.leader-manager { display: flex; min-width: 0; align-items: center; gap: 10px; }
 .leader-name { display: grid; gap: 3px; min-width: 0; }
 .leader-name strong { overflow: hidden; color: #36413b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 .leader-name span { color: #8b948d; font-size: 9px; }
@@ -133,6 +140,9 @@ input:focus-visible, select:focus-visible, .brand:focus-visible {
 table { width: 100%; border-collapse: collapse; text-align: left; white-space: nowrap; }
 th, td { padding: 12px 15px; border-bottom: 1px solid #eeeee8; font-size: 11px; text-align: left; }
 th { color: #858e87; background: #f8f8f3; font-size: 9px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+.sort-header-button { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; color: inherit; background: transparent; cursor: pointer; font: inherit; text-align: left; text-transform: inherit; }
+.sort-header-button:hover { color: #a44d34; }
+.sort-header-button:focus-visible { outline: 2px solid #a94f36; outline-offset: 3px; }
 td { color: #4d5952; }
 tbody tr:last-child td { border-bottom: 0; }
 tbody tr:hover td { background: #fafaf6; }
@@ -153,12 +163,23 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 .manager-details { display: grid; gap: 14px; margin-top: 16px; }
 .manager-detail-panel { padding: 20px; }
 .detail-count { color: #858e87; font-size: 10px; }
+.season-chart-header-meta { display: flex; align-items: center; gap: 14px; }
+.season-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.season-chart-legend > span { display: inline-flex; align-items: center; gap: 5px; color: #77817a; font-size: 9px; white-space: nowrap; }
+.season-legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
+.status-incomplete { background: #a3aaa5; }
+.status-missed-playoffs { background: #c56b47; }
+.status-playoffs { background: #4b9b8c; }
 .season-chart-scroll { overflow-x: auto; margin-top: 18px; }
 .season-chart { display: flex; min-width: max-content; align-items: flex-end; gap: 13px; padding: 0 3px 2px; }
-.season-chart-column { display: grid; width: 42px; flex: 0 0 42px; justify-items: center; gap: 7px; }
+.season-chart-column { display: grid; width: 46px; flex: 0 0 46px; justify-items: center; gap: 6px; }
+.season-chart-record { color: #566159; font-size: 8px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .season-chart-value { color: #728078; font-size: 9px; font-variant-numeric: tabular-nums; }
 .season-chart-track { display: flex; width: 28px; height: 145px; align-items: flex-end; border-bottom: 1px solid #dfe2da; background: repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), #e9ebe5 calc(25% - 1px) 25%); }
-.season-chart-bar { display: block; width: 100%; border-radius: 3px 3px 0 0; background: #6d9977; }
+.season-chart-bar { display: block; width: 100%; border-radius: 3px 3px 0 0; }
+.season-chart-bar.status-incomplete { background: #a3aaa5; }
+.season-chart-bar.status-missed-playoffs { background: #c56b47; }
+.season-chart-bar.status-playoffs { background: #4b9b8c; }
 .season-chart-year { color: #77817a; font-size: 9px; }
 
 .season-summary-strip { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 18px; border: 1px solid #e4e3dc; border-radius: 5px; background: #e9ece5; }
@@ -217,8 +238,7 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
   .page-content { padding: 30px 20px 44px; }
   .dashboard-grid { grid-template-columns: 1fr; }
   .champion-panel { min-height: 205px; }
-  .champion-mark { margin-bottom: 0; }
-  .champion-panel .eyebrow { margin-top: 16px; }
+  .champion-season-label { margin-top: 15px; }
   .records-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 

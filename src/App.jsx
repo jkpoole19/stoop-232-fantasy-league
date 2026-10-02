@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
 import {
   Award,
+  ArrowDown,
+  ArrowUp,
   ArrowUpRight,
   CalendarDays,
   ChevronLeft,
@@ -17,7 +19,7 @@ import { SHEET_URLS } from "./config";
 import "./App.css";
 
 const NAV_ITEMS = [
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "dashboard", label: "League", icon: LayoutDashboard },
   { id: "player", label: "Player", icon: UserRound },
   { id: "seasons", label: "Seasons", icon: CalendarDays },
   { id: "records", label: "Records", icon: Award },
@@ -152,19 +154,53 @@ function getSeasonRows(matchups, seasons) {
   });
 }
 
-function getManagerSeasonWinRates(matchups, managerName) {
-  const seasons = new Map();
+function isNamedChampion(champion) {
+  const normalized = String(champion ?? "").trim().toLowerCase();
+  return normalized && !["—", "-", "tbd", "pending", "none", "n/a", "na", "unknown"].includes(normalized);
+}
 
+function getChampionSeasonRecord(matchups, seasonName, managerName) {
+  if (!seasonName || !managerName) return null;
+
+  const record = { wins: 0, losses: 0, ties: 0, games: 0 };
   matchups.forEach((matchup) => {
+    if (matchup.Season !== seasonName) return;
     const manager1 = matchup["Manager 1"]?.trim();
     const manager2 = matchup["Manager 2"]?.trim();
     if (manager1 !== managerName && manager2 !== managerName) return;
 
     const score1 = numberValue(matchup["Score 1"]);
     const score2 = numberValue(matchup["Score 2"]);
-    if (!matchup.Season || score1 == null || score2 == null) return;
+    if (score1 == null || score2 == null) return;
+    const championScore = manager1 === managerName ? score1 : score2;
+    const opponentScore = manager1 === managerName ? score2 : score1;
+    record.games += 1;
+    if (championScore > opponentScore) record.wins += 1;
+    else if (championScore < opponentScore) record.losses += 1;
+    else record.ties += 1;
+  });
 
-    const season = seasons.get(matchup.Season) || { season: matchup.Season, wins: 0, losses: 0, ties: 0 };
+  return record.games ? record : null;
+}
+
+function getManagerSeasonWinRates(matchups, managerName, seasonRows) {
+  const seasons = new Map();
+  const completedSeasons = new Map(seasonRows.map((season) => [season.name, isNamedChampion(season.champion)]));
+
+  matchups.forEach((matchup) => {
+    const manager1 = matchup["Manager 1"]?.trim();
+    const manager2 = matchup["Manager 2"]?.trim();
+    if (manager1 !== managerName && manager2 !== managerName) return;
+
+    if (!matchup.Season) return;
+    const season = seasons.get(matchup.Season) || { season: matchup.Season, wins: 0, losses: 0, ties: 0, madePlayoffs: false };
+    if (String(matchup["Game Type"]).trim().toUpperCase() === "P") season.madePlayoffs = true;
+    const score1 = numberValue(matchup["Score 1"]);
+    const score2 = numberValue(matchup["Score 2"]);
+    if (score1 == null || score2 == null) {
+      seasons.set(matchup.Season, season);
+      return;
+    }
     const managerScore = manager1 === managerName ? score1 : score2;
     const opponentScore = manager1 === managerName ? score2 : score1;
     if (managerScore > opponentScore) season.wins += 1;
@@ -177,7 +213,13 @@ function getManagerSeasonWinRates(matchups, managerName) {
     .sort((a, b) => seasonOrder(b.season, a.season))
     .map((season) => {
       const games = season.wins + season.losses + season.ties;
-      return { ...season, winPercentage: games ? (season.wins / games) * 100 : 0 };
+      const completed = completedSeasons.get(season.season) || false;
+      return {
+        ...season,
+        completed,
+        winPercentage: games ? (season.wins / games) * 100 : 0,
+        barStatus: !completed ? "incomplete" : season.madePlayoffs ? "playoffs" : "missed-playoffs",
+      };
     });
 }
 
@@ -190,11 +232,14 @@ function getManagerOpponentRecords(matchups, managerName, managerStats) {
     if (manager1 !== managerName && manager2 !== managerName) return;
 
     const opponentName = manager1 === managerName ? manager2 : manager1;
+    if (!opponentName || opponentName === managerName) return;
+    const opponent = opponents.get(opponentName) || { name: opponentName, matchups: 0, wins: 0, losses: 0, ties: 0 };
+    opponent.matchups += 1;
+    opponents.set(opponentName, opponent);
+
     const score1 = numberValue(matchup["Score 1"]);
     const score2 = numberValue(matchup["Score 2"]);
-    if (!opponentName || opponentName === managerName || score1 == null || score2 == null) return;
-
-    const opponent = opponents.get(opponentName) || { name: opponentName, wins: 0, losses: 0, ties: 0 };
+    if (score1 == null || score2 == null) return;
     const managerScore = manager1 === managerName ? score1 : score2;
     const opponentScore = manager1 === managerName ? score2 : score1;
     if (managerScore > opponentScore) opponent.wins += 1;
@@ -282,26 +327,36 @@ function StatCard({ label, value, detail, icon: Icon, tone = "orange" }) {
 }
 
 function Dashboard({ matchups, managerStats, seasonRows, onNavigate }) {
-  const latestSeason = seasonRows[0];
+  const reigningSeason = seasonRows.find((season) => isNamedChampion(season.champion));
+  const reigningChampion = reigningSeason
+    ? managerStats.find((manager) =>
+      [manager.name, manager.displayName].some((name) => name.toLowerCase() === reigningSeason.champion.toLowerCase()),
+    )
+    : null;
+  const championName = reigningChampion?.displayName || reigningSeason?.champion;
+  const championRecord = getChampionSeasonRecord(matchups, reigningSeason?.name, reigningChampion?.name || reigningSeason?.champion);
   const latestGames = sortedMatchups(matchups).slice(0, 5);
   const totalPoints = matchups.reduce(
     (total, game) => total + (numberValue(game["Score 1"]) ?? 0) + (numberValue(game["Score 2"]) ?? 0),
     0,
   );
+  const seasonRange = seasonRows.length
+    ? `${seasonRows[seasonRows.length - 1].name}–${seasonRows[0].name}`
+    : "No seasons recorded";
 
   return (
     <div className="page-content dashboard-page">
       <PageHeading
         eyebrow="League archive"
-        title="The league, at a glance."
+        title="League"
         description="Every season, rivalry, and result in one place."
         action={<button className="primary-action" onClick={() => onNavigate("matchups")}><Search size={16} aria-hidden="true" /> Search matchups</button>}
       />
       <section className="stats-grid" aria-label="League summary">
         <StatCard label="Matchups played" value={matchups.length.toLocaleString()} detail="All recorded games" icon={Trophy} tone="orange" />
-        <StatCard label="League managers" value={managerStats.length.toLocaleString()} detail="Across the archive" icon={UserRound} tone="green" />
-        <StatCard label="Seasons tracked" value={seasonRows.length.toLocaleString()} detail="From first year to latest" icon={CalendarDays} tone="blue" />
-        <StatCard label="Points scored" value={Math.round(totalPoints).toLocaleString()} detail="Combined team totals" icon={Award} tone="gold" />
+        <StatCard label="League managers" value={managerStats.length.toLocaleString()} detail="All-time" icon={UserRound} tone="green" />
+        <StatCard label="Seasons tracked" value={seasonRows.length.toLocaleString()} detail={seasonRange} icon={CalendarDays} tone="blue" />
+        <StatCard label="Points scored" value={Math.round(totalPoints).toLocaleString()} detail="All-Time Total" icon={Award} tone="gold" />
       </section>
 
       <div className="dashboard-grid">
@@ -331,11 +386,22 @@ function Dashboard({ matchups, managerStats, seasonRows, onNavigate }) {
         </section>
 
         <section className="panel champion-panel">
-          <div className="champion-mark"><Trophy size={22} aria-hidden="true" /></div>
-          <p className="eyebrow">Latest season {latestSeason?.name || ""}</p>
-          <h2>{latestSeason?.champion && latestSeason.champion !== "TBD" ? latestSeason.champion : "Title pending"}</h2>
+          <div className="reigning-champion-top">
+            <p className="eyebrow">Reigning champion</p>
+            <span className="reigning-photo-placeholder" aria-hidden="true"><UserRound size={25} strokeWidth={1.6} /></span>
+          </div>
+          <p className="champion-season-label">{reigningSeason ? `${reigningSeason.name} season` : "League archive"}</p>
+          <h2>{championName || "Champion not recorded"}</h2>
+          <div className="champion-final-record">
+            <span>Final record</span>
+            <strong>{championRecord ? `${championRecord.wins}-${championRecord.losses}-${championRecord.ties}` : "Unavailable"}</strong>
+          </div>
           <p className="champion-copy">
-            {latestSeason?.champion && latestSeason.champion !== "TBD" ? "Latest champion in the league archive." : "The latest season champion has not been recorded yet."}
+            {championRecord
+              ? "Season record from the completed matchup results."
+              : reigningSeason
+                ? `No matchup results are recorded for the ${reigningSeason.name} season.`
+                : "A completed season champion has not been recorded yet."}
           </p>
           <button className="text-action" onClick={() => onNavigate("seasons")}>Explore seasons <ChevronRight size={16} aria-hidden="true" /></button>
         </section>
@@ -350,7 +416,10 @@ function Dashboard({ matchups, managerStats, seasonRows, onNavigate }) {
           {managerStats.slice(0, 5).map((manager, index) => (
             <div className="leader-row" key={manager.name}>
               <span className={`leader-rank ${index === 0 ? "first" : ""}`}>{String(index + 1).padStart(2, "0")}</span>
-              <div className="leader-name"><strong>{manager.displayName}</strong><span>{manager.games} games</span></div>
+              <div className="leader-manager">
+                <span className="manager-photo-placeholder" aria-hidden="true"><UserRound size={15} strokeWidth={1.7} /></span>
+                <div className="leader-name"><strong>{manager.displayName}</strong><span>{manager.games} games</span></div>
+              </div>
               <div className="leader-record">{manager.wins}<span>W</span> {manager.losses}<span>L</span>{manager.ties > 0 && <> {manager.ties}<span>T</span></>}</div>
               <div className="leader-bar"><span style={{ width: `${managerStats[0]?.wins ? (manager.wins / managerStats[0].wins) * 100 : 0}%` }} /></div>
             </div>
@@ -363,20 +432,50 @@ function Dashboard({ matchups, managerStats, seasonRows, onNavigate }) {
 }
 
 function ManagerDetails({ manager, seasonWinRates, opponentRecords }) {
+  const [sortState, setSortState] = useState({ key: "winPercentage", direction: "desc" });
+  const columns = [
+    { key: "opponent", label: "Opponent" },
+    { key: "matchups", label: "Total Matchups" },
+    { key: "record", label: "Record (W-L-T)" },
+    { key: "winPercentage", label: "Win %" },
+  ];
+  const sortedOpponents = [...opponentRecords].sort((a, b) => {
+    let comparison = 0;
+    if (sortState.key === "opponent") comparison = a.displayName.localeCompare(b.displayName);
+    else if (sortState.key === "matchups") comparison = a.matchups - b.matchups;
+    else if (sortState.key === "record") comparison = a.wins - b.wins || a.losses - b.losses || a.ties - b.ties;
+    else comparison = a.winPercentage - b.winPercentage;
+    return comparison * (sortState.direction === "asc" ? 1 : -1);
+  });
+  const changeSort = (key) => {
+    setSortState((current) => ({
+      key,
+      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
   return (
     <div className="manager-details">
       <section className="panel manager-detail-panel">
         <div className="panel-heading">
           <div><p className="eyebrow">Season performance</p><h2>Win percentage by year</h2></div>
-          <span className="detail-count">{seasonWinRates.length} seasons</span>
+          <div className="season-chart-header-meta">
+            <div className="season-chart-legend" aria-label="Bar color legend">
+              <span><i className="season-legend-swatch status-incomplete" />In progress</span>
+              <span><i className="season-legend-swatch status-missed-playoffs" />Missed playoffs</span>
+              <span><i className="season-legend-swatch status-playoffs" />Made playoffs</span>
+            </div>
+            <span className="detail-count">{seasonWinRates.length} seasons</span>
+          </div>
         </div>
         {seasonWinRates.length ? (
           <div className="season-chart-scroll">
             <div className="season-chart" role="img" aria-label={`Win percentage by year for ${manager.displayName}`}>
               {seasonWinRates.map((season) => (
-                <div className="season-chart-column" key={season.season} title={`${season.season}: ${season.winPercentage.toFixed(1)}% (${season.wins}-${season.losses}-${season.ties})`}>
+                <div className="season-chart-column" key={season.season} title={`${season.season}: ${season.wins}-${season.losses}-${season.ties}, ${season.winPercentage.toFixed(1)}%, ${season.barStatus === "incomplete" ? "in progress" : season.barStatus === "playoffs" ? "made playoffs" : "missed playoffs"}`}>
+                  <span className="season-chart-record">{season.wins}-{season.losses}-{season.ties}</span>
                   <span className="season-chart-value">{season.winPercentage.toFixed(0)}%</span>
-                  <div className="season-chart-track"><span className="season-chart-bar" style={{ height: `${Math.max(season.winPercentage, 2)}%` }} /></div>
+                  <div className="season-chart-track"><span className={`season-chart-bar status-${season.barStatus}`} style={{ height: `${Math.max(season.winPercentage, 2)}%` }} /></div>
                   <span className="season-chart-year">{season.season}</span>
                 </div>
               ))}
@@ -392,13 +491,28 @@ function ManagerDetails({ manager, seasonWinRates, opponentRecords }) {
         </div>
         <div className="table-scroll">
           <table>
-            <thead><tr><th>Opponent</th><th>Record (W-L-T)</th><th>Win %</th></tr></thead>
+            <thead>
+              <tr>
+                {columns.map(({ key, label }) => {
+                  const active = sortState.key === key;
+                  const SortIcon = sortState.direction === "asc" ? ArrowUp : ArrowDown;
+                  return (
+                    <th key={key} aria-sort={active ? (sortState.direction === "asc" ? "ascending" : "descending") : "none"}>
+                      <button className="sort-header-button" onClick={() => changeSort(key)}>
+                        {label}{active && <SortIcon size={13} aria-hidden="true" />}
+                      </button>
+                    </th>
+                  );
+                })}
+              </tr>
+            </thead>
             <tbody>
-              {opponentRecords.map((opponent) => (
+              {sortedOpponents.map((opponent) => (
                 <tr key={opponent.name}>
                   <td><strong>{opponent.displayName}</strong></td>
+                  <td>{opponent.matchups}</td>
                   <td>{opponent.wins}-{opponent.losses}-{opponent.ties}</td>
-                  <td>{opponent.winPercentage.toFixed(1)}%</td>
+                  <td>{opponent.winPercentage.toFixed(0)}%</td>
                 </tr>
               ))}
             </tbody>
@@ -482,7 +596,7 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
       {selectedManager && (
         <ManagerDetails
           manager={selectedManager}
-          seasonWinRates={getManagerSeasonWinRates(matchups, selectedManager.name)}
+          seasonWinRates={getManagerSeasonWinRates(matchups, selectedManager.name, seasonRows)}
           opponentRecords={getManagerOpponentRecords(matchups, selectedManager.name, managerStats)}
         />
       )}
@@ -649,9 +763,9 @@ export default function App() {
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <a className="brand" href="#dashboard" onClick={(event) => { event.preventDefault(); navigate("dashboard"); }} aria-label="Fantasy League home">
+        <a className="brand" href="#dashboard" onClick={(event) => { event.preventDefault(); navigate("dashboard"); }} aria-label="Stoop 232 home">
           <span className="brand-mark"><Trophy size={19} strokeWidth={2.1} aria-hidden="true" /></span>
-          <span className="brand-copy"><strong>League</strong><small>ARCHIVE / 232</small></span>
+          <span className="brand-copy"><strong>Stoop <span>232</span></strong><small>Fantasy League</small></span>
         </a>
         <div className="nav-section-label">Workspace</div>
         <nav className="side-nav" aria-label="Main navigation">
