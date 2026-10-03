@@ -330,3 +330,83 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+.sidebar { color: var(--gray-100); background: var(--navy-950); }
+.brand-mark { color: var(--white); background: var(--teal-600); }
+.brand-copy strong span, .side-nav-item.selected svg { color: var(--teal-400); }
+.brand-copy small, .nav-section-label { color: var(--gray-400); }
+.side-nav-item { color: #c7d2dc; }
+.side-nav-item:hover { color: var(--white); background: var(--navy-900); }
+.side-nav-item.selected { color: var(--white); background: var(--navy-800); box-shadow: inset 3px 0 var(--teal-400); }
+.side-nav-item:focus-visible, .primary-action:focus-visible, .text-action:focus-visible, input:focus-visible, select:focus-visible, .brand:focus-visible { outline-color: var(--teal-400); }
+.sidebar-bottom { border-color: #304a61; color: #c0cbd5; }
+.status-dot { background: var(--teal-400); box-shadow: 0 0 0 3px rgb(83 185 178 / 14%); }
+.topbar { border-color: var(--gray-300); background: rgb(255 255 255 / 94%); }
+.breadcrumb { color: var(--gray-500); }
+.breadcrumb strong, .page-heading h1, .stat-card > strong { color: var(--ink); }
+.topbar-mark, .page-description, .stat-card-top, .stat-card > p, .cell-secondary, .detail-count, .season-chart-instruction { color: var(--gray-700); }
+.eyebrow { color: var(--teal-700); }
+.primary-action { background: var(--teal-700); }
+.primary-action:hover { background: #066a6c; }
+.text-action { color: var(--teal-700); }
+.text-action:hover, .sort-header-button:hover, .season-row-select:hover { color: #055e66; }
+.stat-card, .panel, .record-card { border-color: var(--gray-300); background: var(--white); }
+.tone-orange { --tone: var(--teal-600); --tone-ink: var(--teal-700); }
+.tone-green { --tone: var(--navy-700); --tone-ink: var(--navy-800); }
+.tone-blue { --tone: #70879a; --tone-ink: #536d81; }
+.tone-gold { --tone: #41aaa5; --tone-ink: #087e80; }
+.stat-card { border-top-color: var(--tone); }
+.panel-heading h2, .recent-game-score strong, .leader-record, .leader-name strong, .record-value, .status-screen { color: var(--ink); }
+.recent-game, .leader-row { border-color: var(--gray-200); }
+.recent-game-meta { color: var(--navy-800); }
+.recent-game-meta span, .recent-game-score i, .leader-name span, .leader-record span, .leader-rank, .cell-secondary, .score-cell { color: var(--gray-500); }
+.recent-game-score .winner, .winner-cell, .status-pill.active { color: var(--teal-700); }
+.champion-panel { border-color: var(--navy-800); color: #e9f0f5; background: var(--navy-900); }
+.reigning-champion-top .eyebrow, .champion-panel .text-action { color: #79d0c7; }
+.reigning-photo-placeholder { border-color: #55748b; color: #87d8d0; background: var(--navy-800); }
+.champion-season-label, .champion-final-record span, .champion-copy { color: #c4d1dc; }
+.champion-panel h2, .champion-final-record strong { color: var(--white); }
+.leader-rank.first { color: var(--teal-700); }
+.leader-bar { background: var(--gray-200); }
+.leader-bar span { background: var(--teal-600); }
+.table-toolbar, .matchup-filters { border-color: var(--gray-200); }
+.search-field { border-color: var(--gray-300); color: var(--gray-500); background: var(--white); }
+.search-field:focus-within, .select-field select:focus-visible { border-color: var(--teal-600); }
+.search-field input { color: var(--ink); }
+.search-field input::placeholder { color: var(--gray-500); }
+th, td { border-color: var(--gray-200); }
+th { color: var(--gray-700); background: var(--gray-100); }
+td { color: var(--gray-700); }
+tbody tr:hover td { background: #f0f6f7; }
+td strong { color: var(--ink); }
+.rank-cell, .season-year { color: var(--teal-700); }
+.manager-photo-placeholder { border-color: var(--gray-300); color: var(--gray-500); background: var(--gray-100); }
+.manager-row:focus-visible { outline-color: var(--teal-600); }
+tbody tr.manager-row-selected td { background: var(--teal-100); }
+.status-pill.active, .game-type { color: var(--teal-700); background: var(--teal-100); }
+.status-pill.inactive { color: var(--gray-700); background: var(--gray-200); }
+.status-incomplete { background: var(--gray-500); }
+.status-missed-playoffs { background: var(--navy-700); }
+.status-playoffs, .season-chart-bar.status-playoffs { background: var(--teal-600); }
+.season-chart-bar.status-missed-playoffs { background: var(--navy-700); }
+.season-summary-strip { border-color: var(--gray-300); background: var(--gray-100); }
+.season-summary-strip > div { border-color: var(--gray-300); }
+.season-summary-strip span, .season-chart-axis-label, .season-chart-year { color: var(--gray-700); }
+.season-summary-strip strong { color: var(--navy-900); }
+.season-row-select:focus-visible, .sort-header-button:focus-visible { outline-color: var(--teal-600); }
+.season-detail-panel td, .season-detail-panel th { border-color: var(--gray-200); }
+.season-chart-gridline { stroke: var(--gray-200); }
+.bracket-status { color: var(--navy-800); background: var(--gray-200); }
+.bracket-section + .bracket-section { border-color: var(--gray-200); }
+.bracket-section h3 { color: var(--navy-800); }
+.bracket-round:not(:last-child)::after { border-color: var(--gray-400); }
+.bracket-round h4, .bracket-match > span { color: var(--gray-500); }
+.bracket-match { border-color: var(--gray-300); border-left-color: var(--teal-600); background: var(--white); }
+.bracket-match > strong { border-color: var(--gray-200); color: var(--navy-800); }
+.record-icon { color: var(--teal-700); background: var(--teal-100); }
+.record-detail, .records-note, .select-field, .table-footer, .empty-state, .status-screen > span { color: var(--gray-700); }
+.select-field select, .page-controls button { border-color: var(--gray-300); color: var(--navy-900); background: var(--white); }
+.page-controls button:hover:not(:disabled) { border-color: var(--teal-600); color: var(--teal-700); }
+.page-controls button:disabled { color: var(--gray-400); background: var(--gray-100); }
+.loading-mark { color: var(--teal-700); background: var(--teal-100); }
+.error-screen .loading-mark { color: var(--navy-800); background: var(--gray-200); }
