@@ -157,6 +157,86 @@ function getSeasonRows(matchups, seasons) {
   });
 }
 
+function getRegularSeasonStandings(games, managers, throughWeek = Infinity) {
+  const managerInfo = new Map(
+    managers.map((manager) => [manager.Manager, manager["Display Name"] || manager.Manager]),
+  );
+  const standings = new Map();
+  const getManager = (name) => {
+    if (!standings.has(name)) {
+      standings.set(name, {
+        name,
+        displayName: managerInfo.get(name) || name,
+        wins: 0,
+        losses: 0,
+        ties: 0,
+        games: 0,
+        pointsFor: 0,
+        pointsAgainst: 0,
+      });
+    }
+    return standings.get(name);
+  };
+
+  games.forEach((game) => {
+    const manager1 = game["Manager 1"]?.trim();
+    const manager2 = game["Manager 2"]?.trim();
+    if (manager1) getManager(manager1);
+    if (manager2) getManager(manager2);
+    if ((numberValue(game.Week) ?? 0) > throughWeek) return;
+
+    const score1 = numberValue(game["Score 1"]);
+    const score2 = numberValue(game["Score 2"]);
+    if (!manager1 || !manager2 || score1 == null || score2 == null) return;
+    const first = getManager(manager1);
+    const second = getManager(manager2);
+    first.games += 1;
+    second.games += 1;
+    first.pointsFor += score1;
+    first.pointsAgainst += score2;
+    second.pointsFor += score2;
+    second.pointsAgainst += score1;
+    if (score1 > score2) {
+      first.wins += 1;
+      second.losses += 1;
+    } else if (score2 > score1) {
+      second.wins += 1;
+      first.losses += 1;
+    } else {
+      first.ties += 1;
+      second.ties += 1;
+    }
+  });
+
+  return [...standings.values()]
+    .map((manager) => ({
+      ...manager,
+      winPercentage: manager.games ? (manager.wins + manager.ties / 2) / manager.games : 0,
+    }))
+    .sort((a, b) =>
+      b.winPercentage - a.winPercentage ||
+      b.pointsFor - a.pointsFor ||
+      a.displayName.localeCompare(b.displayName),
+    );
+}
+
+function getSeasonProgress(games, managers) {
+  const weeks = [...new Set(
+    games
+      .filter((game) => numberValue(game["Score 1"]) != null && numberValue(game["Score 2"]) != null)
+      .map((game) => numberValue(game.Week))
+      .filter((week) => week != null),
+  )].sort((a, b) => a - b);
+
+  return {
+    weeks,
+    standingsByWeek: weeks.map((week) => ({
+      week,
+      standings: getRegularSeasonStandings(games, managers, week),
+    })),
+  };
+}
+
 function isNamedChampion(champion) {
   const normalized = String(champion ?? "").trim().toLowerCase();
   return normalized && !["—", "-", "tbd", "pending", "none", "n/a", "na", "unknown"].includes(normalized);
@@ -760,31 +840,167 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
   );
 }
 
-function SeasonsPage({ seasonRows }) {
+function SeasonProgressChart({ progress, finalStandings }) {
+  const [selectedManager, setSelectedManager] = useState(null);
+  const avatarPlaceholder = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='19' fill='%23f0f1ec' stroke='%23bdc5be'/%3E%3Ccircle cx='20' cy='15' r='6' fill='%237d8980'/%3E%3Cpath d='M8 34c1.8-7 5.8-10 12-10s10.2 3 12 10' fill='%237d8980'/%3E%3C/svg%3E";
+  const chartHeight = 280;
+  const padding = { top: 18, right: 20, bottom: 34, left: 42 };
+  const chartWidth = Math.max(560, 120 + Math.max(0, progress.weeks.length - 1) * 76);
+  const plotWidth = chartWidth - padding.left - padding.right;
+  const plotHeight = chartHeight - padding.top - padding.bottom;
+  const managerCount = Math.max(1, finalStandings.length);
+  const xForWeek = (index) => padding.left + (progress.weeks.length === 1 ? plotWidth / 2 : (index / (progress.weeks.length - 1)) * plotWidth);
+  const yForRank = (rank) => padding.top + (managerCount === 1 ? plotHeight / 2 : ((rank - 1) / (managerCount - 1)) * plotHeight);
+  const plottedManagers = selectedManager
+    ? [...finalStandings.filter((manager) => manager.name !== selectedManager), ...finalStandings.filter((manager) => manager.name === selectedManager)]
+    : finalStandings;
+
+  return (
+    <>
+      {finalStandings.length > 0 && (
+        <div className="season-chart-legend" aria-label="Manager legend">
+          {finalStandings.map((manager) => (
+            <button
+              key={manager.name}
+              className={`season-chart-legend-item ${selectedManager === manager.name ? "selected" : ""}`}
+              type="button"
+              aria-pressed={selectedManager === manager.name}
+              onClick={() => setSelectedManager((current) => current === manager.name ? null : manager.name)}
+            >
+              <i className="season-line-swatch" aria-hidden="true" />
+              <span>{manager.name}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {progress.weeks.length ? (
+        <div className="season-line-chart-scroll">
+          <svg className="season-line-chart" width={chartWidth} height={chartHeight} viewBox={`0 0 ${chartWidth} ${chartHeight}`} role="img" aria-label="Cumulative regular-season standings by week, with first place at the top">
+            {Array.from({ length: managerCount }, (_, index) => {
+              const y = yForRank(index + 1);
+              return (
+                <g key={`rank-${index + 1}`}>
+                  <line x1={padding.left} x2={chartWidth - padding.right} y1={y} y2={y} className="season-chart-gridline" />
+                  <text x={padding.left - 10} y={y + 3} textAnchor="end" className="season-chart-axis-label">{index + 1}</text>
+                </g>
+              );
+            })}
+            {progress.weeks.map((week, weekIndex) => (
+              <text key={week} x={xForWeek(weekIndex)} y={chartHeight - 9} textAnchor="middle" className="season-chart-axis-label">{week}</text>
+            ))}
+            {plottedManagers.map((manager) => {
+              const points = progress.standingsByWeek.map(({ standings }, weekIndex) => {
+                const rank = standings.findIndex((entry) => entry.name === manager.name) + 1;
+                return [xForWeek(weekIndex), yForRank(rank)];
+              });
+              const endpoint = points[points.length - 1];
+              const isSelected = selectedManager === manager.name;
+              return (
+                <g key={manager.name}>
+                  <polyline
+                    points={points.map((point) => point.join(",")).join(" ")}
+                    fill="none"
+                    stroke={isSelected ? "#278c82" : "#9aa29d"}
+                    strokeWidth={isSelected ? "3" : "1.8"}
+                    strokeLinejoin="round"
+                    strokeLinecap="round"
+                  />
+                  {endpoint && <image href={avatarPlaceholder} x={endpoint[0] - 10} y={endpoint[1] - 10} width="20" height="20" aria-label={`${manager.displayName} photo placeholder`} />}
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+      ) : <p className="empty-state">Weekly standings will appear when completed regular-season matchups are available.</p>}
+    </>
+  );
+}
+
+function BracketMatch({ title, first = "TBD", second = "TBD" }) {
+  return (
+    <div className="bracket-match">
+      <span>{title}</span>
+      <strong>{first}</strong>
+      <strong>{second}</strong>
+    </div>
+  );
+}
+
+function SeasonBracketPlaceholder() {
+  return (
+    <section className="panel season-detail-panel bracket-panel">
+      <div className="panel-heading season-detail-heading"><div><p className="eyebrow">Postseason</p><h2>Eight-team bracket</h2></div><span className="bracket-status">Placeholder</span></div>
+      <div className="bracket-section">
+        <h3>Championship bracket</h3>
+        <div className="bracket-rounds championship-rounds">
+          <div className="bracket-round"><h4>Quarterfinals</h4>{Array.from({ length: 4 }, (_, index) => <BracketMatch key={index} title={`Quarterfinal ${index + 1}`} first={`Seed ${index * 2 + 1}`} second={`Seed ${index * 2 + 2}`} />)}</div>
+          <div className="bracket-round"><h4>Semifinals</h4>{Array.from({ length: 2 }, (_, index) => <BracketMatch key={index} title={`Semifinal ${index + 1}`} />)}</div>
+          <div className="bracket-round"><h4>Final</h4><BracketMatch title="Championship" /></div>
+        </div>
+      </div>
+      <div className="bracket-section consolation-section">
+        <h3>Consolation bracket</h3>
+        <div className="bracket-rounds consolation-rounds">
+          <div className="bracket-round"><h4>Consolation semifinals</h4>{Array.from({ length: 2 }, (_, index) => <BracketMatch key={index} title={`Consolation semifinal ${index + 1}`} first="Quarterfinal loser" second="Quarterfinal loser" />)}</div>
+          <div className="bracket-round"><h4>Placement finals</h4><BracketMatch title="Fifth place" /><BracketMatch title="Seventh place" /></div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SeasonsPage({ seasonRows, matchups, managers }) {
+  const [selectedSeason, setSelectedSeason] = useState(null);
+  const selectedGames = selectedSeason
+    ? matchups.filter((game) => game.Season === selectedSeason && String(game["Game Type"]).trim().toUpperCase() === "R")
+    : [];
+  const seasonStandings = selectedSeason ? getRegularSeasonStandings(selectedGames, managers) : [];
+  const seasonProgress = selectedSeason ? getSeasonProgress(selectedGames, managers) : { weeks: [], standingsByWeek: [] };
   const championshipCount = seasonRows.filter((season) => season.champion !== "—" && season.champion !== "TBD").length;
 
   return (
     <div className="page-content">
-      <PageHeading eyebrow="Season archive" title="Every year has a story." description="Champions, finalists, and the games that shaped each season." />
+      <PageHeading eyebrow="Season archive" title={selectedSeason ? `${selectedSeason} season` : "Every year has a story."} description={selectedSeason ? "Regular-season standings and week-by-week position." : "Champions, finalists, and the games that shaped each season."} />
       <section className="season-summary-strip">
         <div><span>Seasons tracked</span><strong>{seasonRows.length}</strong></div>
         <div><span>Champions recorded</span><strong>{championshipCount}</strong></div>
         <div><span>Games archived</span><strong>{seasonRows.reduce((total, season) => total + season.games, 0).toLocaleString()}</strong></div>
       </section>
+      {selectedSeason && <button className="text-action season-back-action" type="button" onClick={() => setSelectedSeason(null)}><ChevronLeft size={15} aria-hidden="true" />All seasons</button>}
       <section className="panel data-panel">
         <div className="panel-heading table-title"><div><p className="eyebrow">By year</p><h2>Season results</h2></div></div>
         <div className="table-scroll">
           <table>
             <thead><tr><th>Season</th><th>Champion</th><th>Runner-up</th><th>Matchups</th><th>Points scored</th></tr></thead>
             <tbody>
-              {seasonRows.map((season) => (
-                <tr key={season.name}><td className="season-year">{season.name}</td><td><strong>{season.champion === "TBD" ? "Pending" : season.champion}</strong></td><td>{season.runnerUp === "TBD" ? "Pending" : season.runnerUp}</td><td>{season.games}</td><td>{Math.round(season.points).toLocaleString()}</td></tr>
+              {seasonRows.filter((season) => !selectedSeason || season.name === selectedSeason).map((season) => (
+                <tr key={season.name}><td className="season-year"><button className="season-row-select" type="button" onClick={() => setSelectedSeason(season.name)} aria-label={`View ${season.name} season details`}>{season.name}</button></td><td><strong>{season.champion === "TBD" ? "Pending" : season.champion}</strong></td><td>{season.runnerUp === "TBD" ? "Pending" : season.runnerUp}</td><td>{season.games}</td><td>{Math.round(season.points).toLocaleString()}</td></tr>
               ))}
             </tbody>
           </table>
           {!seasonRows.length && <p className="empty-state">Season results will appear when data is available.</p>}
         </div>
       </section>
+      {selectedSeason && (
+        <div className="season-detail-grid">
+          <section className="panel season-detail-panel">
+            <div className="panel-heading season-detail-heading"><div><p className="eyebrow">Regular season</p><h2>Standings</h2></div></div>
+            <div className="table-scroll">
+              <table>
+                <thead><tr><th>Rank</th><th>Manager</th><th>Record</th><th>Points for</th><th>Points against</th></tr></thead>
+                <tbody>{seasonStandings.map((manager, index) => <tr key={manager.name}><td className="rank-cell">{index + 1}</td><td><strong>{manager.displayName}</strong></td><td>{manager.wins}-{manager.losses}-{manager.ties}</td><td>{formatScore(manager.pointsFor)}</td><td>{formatScore(manager.pointsAgainst)}</td></tr>)}</tbody>
+              </table>
+              {!seasonStandings.length && <p className="empty-state">Regular-season standings will appear when matchup data is available.</p>}
+            </div>
+          </section>
+          <section className="panel season-detail-panel">
+            <div className="panel-heading season-detail-heading"><div><p className="eyebrow">Cumulative rankings</p><h2>Position by week</h2></div><span className="detail-count">1st place at top</span></div>
+            <p className="season-chart-instruction">Select a manager pill to highlight their line.</p>
+            <SeasonProgressChart key={selectedSeason} progress={seasonProgress} finalStandings={seasonStandings} />
+          </section>
+          <SeasonBracketPlaceholder />
+        </div>
+      )}
     </div>
   );
 }
@@ -996,7 +1212,7 @@ export default function App() {
         </div>
         {currentPage === "dashboard" && <Dashboard matchups={matchups} managerStats={managerStats} seasonRows={seasonRows} onNavigate={navigate} />}
         {currentPage === "player" && <PlayerPage managerStats={managerStats} seasonRows={seasonRows} matchups={matchups} />}
-        {currentPage === "seasons" && <SeasonsPage seasonRows={seasonRows} />}
+        {currentPage === "seasons" && <SeasonsPage seasonRows={seasonRows} matchups={matchups} managers={managers} />}
         {currentPage === "records" && <RecordsPage records={records} />}
         {currentPage === "matchups" && <MatchupsPage matchups={matchups} seasonRows={seasonRows} />}
       </main>

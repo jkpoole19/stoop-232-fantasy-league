@@ -165,7 +165,6 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 .detail-count { color: #858e87; font-size: 10px; }
 .season-chart-header-meta { display: flex; align-items: center; gap: 14px; }
 .season-chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
-.season-chart-legend > span { display: inline-flex; align-items: center; gap: 5px; color: #77817a; font-size: 9px; white-space: nowrap; }
 .season-legend-swatch { width: 8px; height: 8px; border-radius: 2px; }
 .status-incomplete { background: #a3aaa5; }
 .status-missed-playoffs { background: #c56b47; }
@@ -187,6 +186,44 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 .season-summary-strip > div:last-child { border: 0; }
 .season-summary-strip span { color: #727e75; font-size: 10px; }
 .season-summary-strip strong { color: #2d3932; font-family: Georgia, "Times New Roman", serif; font-size: 24px; font-weight: 400; }
+.season-back-action { margin: 0 0 12px; }
+.season-row-select { padding: 0; border: 0; color: inherit; background: transparent; cursor: pointer; font: inherit; text-align: left; }
+.season-row-select:hover { color: #793a29; text-decoration: underline; text-underline-offset: 3px; }
+.season-row-select:focus-visible { outline: 2px solid #a94f36; outline-offset: 4px; }
+.season-detail-grid { display: grid; grid-template-columns: 1fr; gap: 13px; margin-top: 16px; }
+.season-detail-panel { min-width: 0; padding: 18px 19px; }
+.season-detail-heading { min-height: 38px; margin-bottom: 12px; }
+.season-detail-heading .eyebrow { margin-bottom: 5px; }
+.season-detail-heading h2 { font-size: 20px; }
+.season-chart-instruction { margin: -4px 0 10px; color: #7d877f; font-size: 10px; line-height: 1.45; }
+.season-detail-panel th, .season-detail-panel td { padding: 11px 9px; }
+.season-detail-panel th { font-size: 8px; }
+.season-detail-panel td { font-variant-numeric: tabular-nums; }
+.season-detail-panel td strong { font-variant-numeric: normal; }
+.season-line-chart-scroll { overflow-x: auto; margin: 15px -4px 0; }
+.season-line-chart { display: block; max-width: none; height: auto; }
+.season-chart-gridline { stroke: #e5e8e1; stroke-width: 1; }
+.season-chart-axis-label { fill: #77817a; font-family: inherit; font-size: 10px; }
+.season-chart-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border: 1px solid #dfe3dd; border-radius: 999px; color: #657068; background: #f8f9f5; cursor: pointer; font: inherit; font-size: 9px; white-space: nowrap; }
+.season-chart-legend-item:hover { border-color: #b7d4cc; color: #226f68; background: #f2f5f2; }
+.season-chart-legend-item.selected { border-color: #d5e7e1; color: #226f68; background: #eaf2ef; }
+.season-chart-legend-item:focus-visible { outline: 2px solid #278c82; outline-offset: 2px; }
+.season-line-swatch { width: 9px; height: 9px; flex: 0 0 auto; border-radius: 50%; background: #9aa29d; }
+.season-chart-legend-item.selected .season-line-swatch { background: #278c82; }
+.season-detail-grid > .bracket-panel { grid-column: 1 / -1; }
+.bracket-status { padding: 5px 8px; color: #69776e; background: #edf0e9; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.bracket-section { padding-top: 15px; }
+.bracket-section + .bracket-section { margin-top: 18px; border-top: 1px solid #e9e9e2; }
+.bracket-section h3 { margin: 0 0 12px; color: #4c5a51; font-size: 11px; font-weight: 700; }
+.bracket-rounds { display: grid; gap: 22px; }
+.championship-rounds { grid-template-columns: 1.25fr 1fr 0.85fr; }
+.consolation-rounds { grid-template-columns: 1.2fr 1fr; }
+.bracket-round { position: relative; display: grid; align-content: space-around; gap: 12px; min-width: 0; }
+.bracket-round:not(:last-child)::after { position: absolute; top: 50%; right: -17px; width: 11px; border-top: 1px solid #c9cec6; content: ""; }
+.bracket-round h4 { margin: 0 0 4px; color: #89928b; font-size: 9px; font-weight: 700; text-transform: uppercase; }
+.bracket-match { display: grid; min-width: 0; padding: 8px 9px; border: 1px solid #e5e6df; border-left: 2px solid #a9b7aa; background: #fff; }
+.bracket-match > span { overflow: hidden; margin-bottom: 4px; color: #909890; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.bracket-match > strong { overflow: hidden; padding: 3px 0; border-top: 1px solid #f0f0eb; color: #4c5850; font-size: 9px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 .table-title { padding: 18px 19px 14px; }
 .table-title h2 { font-size: 19px; }
 .records-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
@@ -247,6 +284,12 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
   .champion-season-label { margin-top: 15px; }
   .records-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .top-five-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .season-detail-grid { grid-template-columns: 1fr; }
+  .season-detail-grid > .bracket-panel { grid-column: auto; }
+  .season-detail-panel { padding: 15px 12px; }
+  .championship-rounds { grid-template-columns: 1.1fr 0.95fr 0.85fr; gap: 16px; }
+  .consolation-rounds { gap: 16px; }
+  .bracket-round:not(:last-child)::after { right: -12px; width: 8px; }
 }
 
 @media (max-width: 520px) {
@@ -270,6 +313,10 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
   .season-summary-strip > div { padding: 13px 9px; }
   .season-summary-strip span { font-size: 9px; }
   .season-summary-strip strong { font-size: 21px; }
+  .bracket-panel { padding: 15px 12px; }
+  .bracket-rounds { gap: 12px; }
+  .championship-rounds { grid-template-columns: minmax(128px, 1.15fr) minmax(112px, 0.95fr) minmax(100px, 0.85fr); }
+  .consolation-rounds { grid-template-columns: minmax(140px, 1.1fr) minmax(120px, 0.9fr); }
   .records-grid { gap: 9px; }
   .record-card { min-height: 159px; padding: 13px; }
   .record-value { font-size: 23px; }
