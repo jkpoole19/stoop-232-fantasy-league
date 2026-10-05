@@ -227,6 +227,11 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 .table-title { padding: 18px 19px 14px; }
 .table-title h2 { font-size: 19px; }
 .records-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 13px; }
+.historical-ranking-panel { margin-top: 18px; }
+.historical-ranking-panel table { min-width: 730px; }
+.ranking-controls { display: flex; align-items: center; gap: 14px; }
+.ranking-positive { color: #147369; font-weight: 700; }
+.ranking-negative { color: #a44f35; font-weight: 700; }
 .record-card { display: flex; min-height: 175px; flex-direction: column; align-items: flex-start; padding: 18px; border: 1px solid #e5e4dc; border-radius: 5px; background: #fffefa; }
 .record-icon { width: 34px; height: 34px; margin-bottom: 15px; border-radius: 50%; color: #a44f35; background: #f6e9df; }
 .record-card .eyebrow { margin-bottom: 7px; }
@@ -318,6 +323,7 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
   .championship-rounds { grid-template-columns: minmax(128px, 1.15fr) minmax(112px, 0.95fr) minmax(100px, 0.85fr); }
   .consolation-rounds { grid-template-columns: minmax(140px, 1.1fr) minmax(120px, 0.9fr); }
   .records-grid { gap: 9px; }
+  .ranking-controls { align-items: flex-start; flex-direction: column; gap: 8px; }
   .record-card { min-height: 159px; padding: 13px; }
   .record-value { font-size: 23px; }
   .top-five-grid { grid-template-columns: 1fr; }

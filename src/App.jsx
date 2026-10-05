@@ -54,6 +54,12 @@ function formatScore(value) {
     : value.toLocaleString(undefined, { maximumFractionDigits: 2 });
 }
 
+function formatFixedScore(value) {
+  return value == null
+    ? "—"
+    : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 function seasonOrder(a, b) {
   const left = numberValue(a);
   const right = numberValue(b);
@@ -434,24 +440,38 @@ function getRecords(matchups, managerStats, seasonRows) {
     .filter((game) => game.margin > 0)
     .sort((a, b) => a.margin - b.margin || a.index - b.index)[0] || null;
   const seasonManagerStats = new Map();
+  const seasonPointTotals = new Map();
   scoredMatchups.forEach((game) => {
     if (!game.season) return;
+    const seasonTotals = seasonPointTotals.get(game.season) || { points: 0, matchups: 0 };
+    seasonTotals.points += game.score1 + game.score2;
+    seasonTotals.matchups += 1;
+    seasonPointTotals.set(game.season, seasonTotals);
     [
-      { manager: game.manager1, score: game.score1, won: game.score1 > game.score2 },
-      { manager: game.manager2, score: game.score2, won: game.score2 > game.score1 },
-    ].forEach(({ manager, score, won }) => {
+      { manager: game.manager1, score: game.score1, result: game.score1 > game.score2 ? "wins" : game.score1 < game.score2 ? "losses" : "ties" },
+      { manager: game.manager2, score: game.score2, result: game.score2 > game.score1 ? "wins" : game.score2 < game.score1 ? "losses" : "ties" },
+    ].forEach(({ manager, score, result }) => {
+      if (!manager) return;
       const key = JSON.stringify([game.season, manager]);
-      const stats = seasonManagerStats.get(key) || { manager, season: game.season, games: 0, points: 0, wins: 0 };
+      const stats = seasonManagerStats.get(key) || { manager, season: game.season, games: 0, points: 0, wins: 0, losses: 0, ties: 0 };
       stats.games += 1;
       stats.points += score;
-      if (won) stats.wins += 1;
+      stats[result] += 1;
       seasonManagerStats.set(key, stats);
     });
   });
   const seasonRecords = [...seasonManagerStats.values()].map((stats) => ({
     ...stats,
     averageScore: stats.points / stats.games,
-  }));
+    leagueAverage: seasonPointTotals.get(stats.season).points / (seasonPointTotals.get(stats.season).matchups * 2),
+    displayName: displayNames.get(stats.manager) || stats.manager,
+  })).map((stats) => ({
+    ...stats,
+    difference: stats.averageScore - stats.leagueAverage,
+  })).sort((a, b) =>
+    b.difference - a.difference || b.averageScore - a.averageScore ||
+    a.displayName.localeCompare(b.displayName) || seasonOrder(a.season, b.season),
+  );
   const highestSeasonAverage = [...seasonRecords].sort((a, b) => b.averageScore - a.averageScore || a.manager.localeCompare(b.manager))[0] || null;
   const lowestSeasonAverage = [...seasonRecords].sort((a, b) => a.averageScore - b.averageScore || a.manager.localeCompare(b.manager))[0] || null;
   const mostSeasonWins = [...seasonRecords].sort((a, b) => b.wins - a.wins || a.manager.localeCompare(b.manager))[0] || null;
@@ -478,6 +498,7 @@ function getRecords(matchups, managerStats, seasonRows) {
   )[0] || null;
 
   return {
+    seasonRecords,
     highestScore,
     lowestScore,
     widestMargin,
@@ -1026,6 +1047,15 @@ function TopFiveTable({ title, headers, rows, renderCells, emptyMessage }) {
 }
 
 function RecordsPage({ records }) {
+  const [sortDirection, setSortDirection] = useState("desc");
+  const [pageSize, setPageSize] = useState("25");
+  const sortedSeasonRecords = [...records.seasonRecords].sort((a, b) =>
+    (a.difference - b.difference) * (sortDirection === "asc" ? 1 : -1) ||
+    b.averageScore - a.averageScore || a.displayName.localeCompare(b.displayName),
+  );
+  const displayedSeasonRecords = pageSize === "all"
+    ? sortedSeasonRecords
+    : sortedSeasonRecords.slice(0, Number(pageSize));
   const streakDetail = (streak) => {
     if (!streak) return "No scored streaks yet";
     const seasons = streak.startSeason === streak.endSeason
@@ -1075,6 +1105,56 @@ function RecordsPage({ records }) {
           emptyMessage="No scored matchups yet."
         />
       </div>
+
+      <section className="panel historical-ranking-panel">
+        <div className="panel-heading table-title">
+          <div><p className="eyebrow">Historical scoring index</p><h2>Team scoring index</h2></div>
+          <div className="ranking-controls">
+            <span className="detail-count">Showing {displayedSeasonRecords.length} of {records.seasonRecords.length}</span>
+            <label className="select-field">
+              <span>Show</span>
+              <select aria-label="Team-seasons to show" value={pageSize} onChange={(event) => setPageSize(event.target.value)}>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="all">All</option>
+              </select>
+              <span>rows</span>
+            </label>
+          </div>
+        </div>
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Team / Season</th>
+                <th>Overall record</th>
+                <th>Avg points for</th>
+                <th>League avg points for</th>
+                <th aria-sort={sortDirection === "desc" ? "descending" : "ascending"}>
+                  <button className="sort-header-button" type="button" onClick={() => setSortDirection((direction) => direction === "desc" ? "asc" : "desc")}>
+                    Difference{sortDirection === "desc" ? <ArrowDown size={13} aria-hidden="true" /> : <ArrowUp size={13} aria-hidden="true" />}
+                  </button>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {displayedSeasonRecords.map((team, index) => (
+                <tr key={`${team.season}-${team.manager}`}>
+                  <td className="rank-cell">{index + 1}</td>
+                  <td><strong>{team.displayName} / {team.season}</strong></td>
+                  <td>{team.wins}-{team.losses}-{team.ties}</td>
+                  <td>{formatFixedScore(team.averageScore)}</td>
+                  <td>{formatFixedScore(team.leagueAverage)}</td>
+                  <td className={team.difference > 0 ? "ranking-positive" : team.difference < 0 ? "ranking-negative" : ""}>{team.difference > 0 ? "+" : ""}{formatFixedScore(team.difference)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {!records.seasonRecords.length && <p className="empty-state">Historical team rankings will appear when scored matchups are available.</p>}
+        </div>
+      </section>
       <p className="records-note">Records are calculated from the matchup and season sheets currently in the league archive.</p>
     </div>
   );
