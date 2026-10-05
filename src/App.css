@@ -232,6 +232,13 @@ tbody tr.manager-row-selected td { background: #f5eee7; }
 .ranking-controls { display: flex; align-items: center; gap: 14px; }
 .ranking-positive { color: #147369; font-weight: 700; }
 .ranking-negative { color: #a44f35; font-weight: 700; }
+.medals-cell { min-width: 125px; }
+.medal-list { display: flex; align-items: center; gap: 5px; }
+.medal-token { display: inline-flex; flex: 0 0 auto; }
+.medal-gold { color: #b27b12; }
+.medal-silver { color: #77838a; }
+.medal-bronze { color: #a8653d; }
+.medals-empty { color: #89928b; }
 .record-card { display: flex; min-height: 175px; flex-direction: column; align-items: flex-start; padding: 18px; border: 1px solid #e5e4dc; border-radius: 5px; background: #fffefa; }
 .record-icon { width: 34px; height: 34px; margin-bottom: 15px; border-radius: 50%; color: #a44f35; background: #f6e9df; }
 .record-card .eyebrow { margin-bottom: 7px; }

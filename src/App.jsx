@@ -11,6 +11,7 @@ import {
   CircleHelp,
   Flame,
   LayoutDashboard,
+  Medal,
   Search,
   Target,
   Trophy,
@@ -28,6 +29,7 @@ const NAV_ITEMS = [
   { id: "records", label: "Records", icon: Award },
   { id: "matchups", label: "Matchup Search", icon: Search },
 ];
+const MEDAL_ORDER = { gold: 0, silver: 1, bronze: 2 };
 
 function loadCsv(url) {
   return new Promise((resolve, reject) => {
@@ -154,6 +156,7 @@ function getSeasonRows(matchups, seasons) {
       name,
       champion: season.Champion || "—",
       runnerUp: season["Runner-Up"] || "—",
+      thirdPlace: season["Third Place"] || "—",
       games: games.length,
       points: games.reduce(
         (total, game) => total + (numberValue(game["Score 1"]) ?? 0) + (numberValue(game["Score 2"]) ?? 0),
@@ -747,12 +750,22 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
   const filtered = managerStats.filter((manager) => `${manager.displayName} ${manager.name}`.toLowerCase().includes(query.toLowerCase()));
   const selectedManager = managerStats.find((manager) => manager.name === selectedManagerName);
   const championshipCounts = new Map(managerStats.map((manager) => [manager.name, 0]));
+  const medalsByManager = new Map(managerStats.map((manager) => [manager.name, []]));
   seasonRows.forEach((season) => {
-    if (!season.champion || season.champion === "—" || season.champion === "TBD") return;
-    const champion = managerStats.find((manager) =>
-      [manager.name, manager.displayName].some((name) => name.toLowerCase() === season.champion.toLowerCase()),
-    );
-    if (champion) championshipCounts.set(champion.name, championshipCounts.get(champion.name) + 1);
+    [
+      { managerName: season.champion, place: "gold" },
+      { managerName: season.runnerUp, place: "silver" },
+      { managerName: season.thirdPlace, place: "bronze" },
+    ].forEach(({ managerName, place }) => {
+      const normalizedName = String(managerName ?? "").trim().toLowerCase();
+      if (!normalizedName || normalizedName === "—" || normalizedName === "tbd") return;
+      const manager = managerStats.find((entry) =>
+        [entry.name, entry.displayName].some((name) => name.toLowerCase() === normalizedName),
+      );
+      if (!manager) return;
+      medalsByManager.get(manager.name).push({ season: season.name, place });
+      if (place === "gold") championshipCounts.set(manager.name, championshipCounts.get(manager.name) + 1);
+    });
   });
   const columns = [
     { key: "rank", label: "Rank" },
@@ -761,7 +774,8 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
     { key: "winPercentage", label: "Win %" },
     { key: "pointsFor", label: "Points for" },
     { key: "pointsAgainst", label: "Points against" },
-    { key: "championships", label: "Championship Count" },
+    { key: "championships", label: "Titles" },
+    { key: "medals", label: "Medals Won" },
   ];
   const sortedManagers = [...filtered].sort((a, b) => {
     const direction = sortState.direction === "asc" ? 1 : -1;
@@ -775,7 +789,8 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
       comparison = (aGames ? a.wins / aGames : 0) - (bGames ? b.wins / bGames : 0);
     } else if (sortState.key === "pointsFor") comparison = a.pointsFor - b.pointsFor;
     else if (sortState.key === "pointsAgainst") comparison = a.pointsAgainst - b.pointsAgainst;
-    else comparison = (championshipCounts.get(a.name) || 0) - (championshipCounts.get(b.name) || 0);
+    else if (sortState.key === "championships") comparison = (championshipCounts.get(a.name) || 0) - (championshipCounts.get(b.name) || 0);
+    else comparison = (medalsByManager.get(a.name)?.length || 0) - (medalsByManager.get(b.name)?.length || 0);
     return comparison * direction || a.displayName.localeCompare(b.displayName);
   });
   const visibleManagers = selectedManager ? [selectedManager] : sortedManagers;
@@ -842,6 +857,18 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
                     <td>{manager.wins}-{manager.losses}{manager.ties ? `-${manager.ties}` : ""}</td>
                     <td>{winRate.toFixed(1)}%</td><td>{Math.round(manager.pointsFor).toLocaleString()}</td><td>{Math.round(manager.pointsAgainst).toLocaleString()}</td>
                     <td>{championshipCounts.get(manager.name) || 0}</td>
+                    <td className="medals-cell">
+                      <div className="medal-list">
+                        {[...(medalsByManager.get(manager.name) || [])]
+                          .sort((a, b) => MEDAL_ORDER[a.place] - MEDAL_ORDER[b.place] || seasonOrder(a.season, b.season))
+                          .map(({ season, place }) => (
+                          <span className={`medal-token medal-${place}`} key={`${season}-${place}`} role="img" aria-label={`${place} medal, ${season}`} title={`${season} - ${place[0].toUpperCase()}${place.slice(1)}`}>
+                            <Medal size={16} strokeWidth={2} aria-hidden="true" />
+                          </span>
+                        ))}
+                        {!medalsByManager.get(manager.name)?.length && <span className="medals-empty">—</span>}
+                      </div>
+                    </td>
                   </tr>
                 );
               })}
