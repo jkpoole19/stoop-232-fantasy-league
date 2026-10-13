@@ -807,6 +807,7 @@ function PlayerPage({ managerStats, seasonRows, matchups }) {
       <section className="panel data-panel">
         <div className="table-toolbar">
           <span>{selectedManager ? "1 manager selected" : `${filtered.length} managers`}</span>
+          {!selectedManager && <p className="standings-hint">Select a player to see additional detail.</p>}
           {selectedManager ? (
             <button className="text-action" onClick={() => setSelectedManagerName(null)}><ChevronLeft size={16} aria-hidden="true" /> All managers</button>
           ) : (

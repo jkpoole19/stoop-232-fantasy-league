@@ -246,6 +246,11 @@ export default function Player({ playerName = "Player Name", matchups = [], curr
               );
             })}
           </div>
+          <div className="year-legend" aria-label="Win percentage chart legend">
+            <span><i className="year-legend-swatch current" />Current season</span>
+            <span><i className="year-legend-swatch playoffs" />Made playoffs</span>
+            <span><i className="year-legend-swatch no-playoffs" />Missed playoffs</span>
+          </div>
         </section>
 
         <section className="card highlights">

@@ -232,6 +232,31 @@
   white-space: nowrap;
 }
 
+.year-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  padding: 0 8px;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.year-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.year-legend-swatch {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+
+.year-legend-swatch.current { background: gray; }
+.year-legend-swatch.playoffs { background: var(--accent); }
+.year-legend-swatch.no-playoffs { background: var(--muted); }
+
 .highlights-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
